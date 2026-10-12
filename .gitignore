@@ -1,0 +1,42 @@
+# Python Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment Variables & Secrets (Keep .env.example, ignore .env)
+.env
+!.env.example
+
+# Database data & Docker volumes
+pgdata/
+
+# Heavy Documentation, Images & Large PDF Materials
+docs/pic/
+docs/rag/
+*.pdf
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor local settings
+.idea/
+*.swp
+*.swo
+
+# Temporary data & logs
+*.log
+data/01_data_lake_raw/*
+!data/01_data_lake_raw/japan/
+!data/01_data_lake_raw/korea/
+!data/01_data_lake_raw/australia/
+!data/README.md

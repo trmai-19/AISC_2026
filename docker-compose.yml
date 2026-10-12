@@ -1,0 +1,61 @@
+services:
+  # 1. CƠ SỞ DỮ LIỆU POSTGRESQL 16 + PGVECTOR
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: aisc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: aisc_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./database/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./database/02_mock_data.sql:/docker-entrypoint-initdb.d/02_mock_data.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aisc_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. FASTAPI BACKEND SERVER (RAG COPILOT & REST API)
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    container_name: aisc_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/aisc_db
+      - APP_ENV=development
+      - APP_PORT=8000
+      - APP_HOST=0.0.0.0
+      - CORS_ORIGINS=["*"]
+      - EMBEDDING_MODEL=bge-m3
+      - CONFIDENCE_THRESHOLD=0.75
+    volumes:
+      # Ánh xạ thư mục mã nguồn để kích hoạt tính năng Hot-Reload khi sửa code
+      - ./src/backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 3. WEB FRONTEND NGINX (WEB UI CỤC BỘ)
+  frontend:
+    image: nginx:alpine
+    container_name: aisc_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    volumes:
+      # Ánh xạ giao diện tĩnh để cập nhật tức thời khi sửa HTML/CSS/JS
+      - ./src/ui:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

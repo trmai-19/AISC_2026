@@ -1,0 +1,10 @@
+{
+  "include": [
+    "src/backend",
+    "scripts"
+  ],
+  "extraPaths": [
+    "src/backend"
+  ],
+  "reportMissingImports": "warning"
+}

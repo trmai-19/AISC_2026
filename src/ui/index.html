@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCI - Digital Cultural Interpreter (Phiên Dịch Văn Hoá Số)</title>
+  <meta name="description" content="Hệ thống hỗ trợ thích nghi văn hoá và hội nhập cho cộng đồng người Việt tại Nhật Bản, Hàn Quốc, Australia dựa trên RAG AI và dữ liệu kiểm chứng.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/><path d='M2 12h20'/></svg>">
+</head>
+<body>
+
+  <!-- ==================== HEADER & GLOBAL NAVBAR ==================== -->
+  <header class="header">
+    <div class="header-container">
+      <a href="#" class="brand-section" onclick="switchView('chat')">
+        <div class="brand-logo-badge" title="DCI - Digital Cultural Interpreter">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+            <path d="M2 12h20"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">DCI</span>
+          <span class="brand-subtitle">Phiên dịch văn hóa số</span>
+        </div>
+      </a>
+
+      <!-- Navigation Tabs -->
+      <nav class="nav-tabs" role="tablist">
+        <button class="nav-tab-btn active" id="tab-btn-chat" onclick="switchView('chat')">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Trợ Lý AI
+        </button>
+        <button class="nav-tab-btn" id="tab-btn-explorer" onclick="switchView('explorer')">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Tra Cứu Thông Tin
+        </button>
+        <button class="nav-tab-btn" id="tab-btn-survey" onclick="switchView('survey')">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Đóng Góp Dữ Liệu
+        </button>
+        <button class="nav-tab-btn" id="tab-btn-dashboard" onclick="switchView('dashboard')">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Thống Kê
+        </button>
+        <button class="nav-tab-btn" id="tab-btn-admin" onclick="switchView('admin')">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Quản Trị <span class="badge-pill" id="pendingQueueCount">2</span>
+        </button>
+      </nav>
+
+      <!-- Header Actions: Role Switcher, Theme Toggle & Info -->
+      <div class="header-actions">
+        <!-- Backend Status Pill -->
+        <div class="backend-status-pill" id="backendStatusPill" title="Trạng thái kết nối FastAPI + pgvector">
+          <span class="status-dot" id="backendStatusDot"></span>
+          <span id="backendStatusText">API: Standby</span>
+        </div>
+
+        <!-- Role Selector Pill -->
+        <button class="role-pill-btn" onclick="openRoleModal()" title="Bấm để đổi vai trò kiểm thử (Khách, Thành viên, Admin)">
+          <span class="role-tag-badge" id="headerRoleBadge">Thành viên</span>
+          <span id="headerRoleName">Nguyễn Văn A</span>
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+
+        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Chuyển chế độ Giao diện Sáng / Tối">
+          <span id="themeToggleIcon">🌙</span>
+          <span id="themeToggleText">Tối</span>
+        </button>
+
+        <button class="btn-icon" onclick="openInfoModal()" title="Thông tin Đề án DCI">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT AREA ==================== -->
+  <main class="app-main">
+
+    <!-- ==============================================================
+         VIEW 1: RAG CHATBOT ASSISTANT (TRỢ LÝ DCI COPILOT)
+         ============================================================== -->
+    <section id="view-chat" class="view-section active">
+      <div class="page-header-compact">
+        <div class="page-header-title">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span>DCI Copilot</span>
+        </div>
+        <div class="page-header-sub">Hỏi đáp văn hóa & quy chuẩn ứng xử kèm trích dẫn đối soát minh bạch</div>
+      </div>
+
+      <div class="chat-layout">
+        <!-- Left: Profile & Context Selector -->
+        <aside class="chat-sidebar">
+          <div class="sidebar-card-title">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Hồ Sơ Ngữ Cảnh
+          </div>
+
+          <div class="profile-selector-group">
+            <div class="form-field">
+              <label for="chatUserCountry">Quốc gia đến</label>
+              <select id="chatUserCountry" class="custom-select" onchange="updateUserContext()">
+                <option value="JP" selected>Nhật Bản (Japan)</option>
+                <option value="KR">Hàn Quốc (South Korea)</option>
+                <option value="AU">Australia</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="chatUserPurpose">Mục đích chính</label>
+              <select id="chatUserPurpose" class="custom-select" onchange="updateUserContext()">
+                <option value="DU_HOC" selected>Du học sinh</option>
+                <option value="LAO_DONG">Lao động kỹ năng</option>
+                <option value="DINH_CU">Định cư / Gia đình</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="chatUserStage">Giai đoạn hành trình</label>
+              <select id="chatUserStage" class="custom-select" onchange="updateUserContext()">
+                <option value="PREPARING" selected>Đang chuẩn bị đi</option>
+                <option value="RECENT_ARRIVED">Mới đến (&lt; 6 tháng)</option>
+                <option value="LIVING">Đang sinh sống (&gt; 1 năm)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Suggested Prompt Chips -->
+          <div>
+            <div class="sidebar-card-title" style="margin-top: 0.25rem;">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Gợi Ý Nhanh
+            </div>
+            <div class="prompt-suggestions-box" id="samplePromptContainer">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </aside>
+
+        <!-- Right: Chat Window -->
+        <div class="chat-window">
+          <div class="chat-window-header">
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+              <div class="user-avatar-circle" style="background: var(--accent-primary);">AI</div>
+              <div>
+                <strong style="font-size: 0.9rem; color: var(--text-primary);">DCI Copilot</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted);" id="chatContextActiveLabel">
+                  Ngữ cảnh: Nhật Bản • Du học sinh • Đang chuẩn bị đi
+                </div>
+              </div>
+            </div>
+            <div class="rag-status-indicator">
+              <span class="status-dot-pulse"></span>
+              <span id="ragPipelineStatus">Active</span>
+            </div>
+          </div>
+
+          <!-- Messages Container -->
+          <div class="chat-messages" id="chatMessages">
+            <!-- Friendly Welcome Hero with 4 Starter Cards -->
+            <div class="chat-welcome-container" id="chatWelcomeHero">
+              <div class="welcome-logo-badge">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                  <path d="M2 12h20"/>
+                </svg>
+              </div>
+              <h3 class="welcome-title">Xin chào! Bạn cần tìm hiểu gì hôm nay?</h3>
+              <p class="welcome-subtitle">Chọn tình huống mẫu hoặc nhập câu hỏi để nhận hướng dẫn ứng xử chuẩn mực kèm nguồn đối soát.</p>
+              
+              <div class="starter-cards-grid">
+                <div class="starter-card" onclick="handlePromptClick('Khi làm thêm ở quán ăn Nhật Bản, nếu vô tình làm vỡ bát đĩa thì cách ứng xử đúng chuẩn là gì?')">
+                  <div class="starter-card-title">Vỡ bát đĩa quán ăn Nhật</div>
+                  <div class="starter-card-desc">Cách xin lỗi & xử lý theo chuẩn Horenso</div>
+                </div>
+                <div class="starter-card" onclick="handlePromptClick('Cách cúi chào, xưng hô và đưa nhận đồ với tiền bối (Sunbae) ở trường đại học Hàn Quốc?')">
+                  <div class="starter-card-title">Kính ngữ tiền bối Hàn Quốc</div>
+                  <div class="starter-card-desc">Quy tắc xưng hô & nhận đồ bằng hai tay</div>
+                </div>
+                <div class="starter-card" onclick="handlePromptClick('Du học sinh Úc được làm thêm bao nhiêu tiếng mỗi tuần và mức lương tối thiểu Fair Work là bao nhiêu?')">
+                  <div class="starter-card-title">Lương & giờ làm tại Úc</div>
+                  <div class="starter-card-desc">Quy định 48h/2 tuần theo Fair Work</div>
+                </div>
+                <div class="starter-card" onclick="handlePromptClick('Du học sinh Hàn Quốc có bắt buộc phải đóng Bảo hiểm Y tế Quốc dân (NHIS) không và phí bao nhiêu?')">
+                  <div class="starter-card-title">Bảo hiểm y tế NHIS Hàn</div>
+                  <div class="starter-card-desc">Quy định bắt buộc & mức chi trả viện phí</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Box -->
+          <div class="chat-input-bar">
+            <div class="chat-input-box">
+              <input type="text" id="chatInput" placeholder="Nhập câu hỏi hoặc tình huống văn hoá cần giải đáp..." onkeydown="handleChatKeyDown(event)">
+            </div>
+            <button class="btn-send" onclick="sendUserMessage()" title="Gửi câu hỏi" aria-label="Gửi câu hỏi">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================================
+         VIEW 2: EVIDENCE HUB (TRA CỨU THÔNG TIN)
+         ============================================================== -->
+    <section id="view-explorer" class="view-section">
+      <div class="page-header-compact">
+        <div class="page-header-title">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          <span>Evidence Hub</span>
+        </div>
+        <div class="page-header-sub">Cơ sở tri thức và tình huống thực tế đã được chuẩn hóa</div>
+      </div>
+
+      <!-- Filters Bar -->
+      <div class="explorer-filters-bar">
+        <div class="filter-row-top">
+          <div class="search-input-wrap">
+            <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="explorerSearchInput" placeholder="Tìm theo từ khóa (VD: vỡ bát, baito, kính ngữ, tipping, visa 500, NHIS...)" oninput="filterEvidenceCards()">
+          </div>
+
+          <div class="country-pill-selectors">
+            <button class="filter-pill active" data-country="ALL" onclick="setCountryFilter('ALL')">Tất cả</button>
+            <button class="filter-pill" data-country="JP" onclick="setCountryFilter('JP')">Nhật Bản</button>
+            <button class="filter-pill" data-country="KR" onclick="setCountryFilter('KR')">Hàn Quốc</button>
+            <button class="filter-pill" data-country="AU" onclick="setCountryFilter('AU')">Australia</button>
+          </div>
+        </div>
+
+        <!-- Life Domains Pill Selector -->
+        <div class="domain-filter-chips" id="domainFilterPills">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Evidence Cards Grid -->
+      <div class="cards-grid" id="evidenceCardsGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ==============================================================
+         VIEW 3: COMMUNITY SURVEY & EXPERIENCE CONTRIBUTION
+         ============================================================== -->
+    <section id="view-survey" class="view-section">
+      <div class="survey-wrapper">
+        <div class="survey-header">
+          <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">Khảo Sát & Chia Sẻ Trải Nghiệm Văn Hoá</h3>
+          <p style="color: var(--text-secondary); font-size: 0.82rem;">Đóng góp tình huống thực tế của bạn để hoàn thiện cơ sở tri thức hỗ trợ cộng đồng người Việt.</p>
+          <div class="pii-notice-box">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span><strong>Cam kết bảo mật:</strong> Hệ thống đảm bảo các nguyên tắc về bảo mật dữ liệu cá nhân và tuân thủ các quy định về bảo vệ quyền riêng tư người dùng.</span>
+          </div>
+        </div>
+
+        <form id="communitySurveyForm" onsubmit="handleSurveySubmit(event)">
+          <!-- Section 1: Demographics -->
+          <div class="survey-form-section">
+            <h4>
+              <span style="background: var(--accent-primary); color: #ffffff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">1</span>
+              Thông Tin Hành Trình
+            </h4>
+            <div class="form-grid-2">
+              <div class="form-field">
+                <label for="surveyCountry">Quốc gia đến *</label>
+                <select id="surveyCountry" class="custom-select" required>
+                  <option value="JP">Nhật Bản (Japan)</option>
+                  <option value="KR">Hàn Quốc (South Korea)</option>
+                  <option value="AU">Australia</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="surveyPurpose">Mục đích chính *</label>
+                <select id="surveyPurpose" class="custom-select" required>
+                  <option value="DU_HOC">Du học (Ngôn ngữ / Đại học / Cao học)</option>
+                  <option value="LAO_DONG">Lao động kỹ năng / Tokutei / Hợp đồng</option>
+                  <option value="DINH_CU">Định cư / Gia đình / Nghiên cứu</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-field" style="margin-top: 1rem;">
+              <label for="surveyStage">Giai đoạn hành trình *</label>
+              <select id="surveyStage" class="custom-select" required>
+                <option value="PREPARING">Đang chuẩn bị đi và chưa từng sinh sống tại đó</option>
+                <option value="RECENT_ARRIVED">Hiện đang sinh sống/học tập (&lt; 1 năm)</option>
+                <option value="LIVING">Hiện đang sinh sống/học tập/làm việc (&gt; 1 năm)</option>
+                <option value="RETURNED">Đã từng sinh sống/làm việc tại đó và hiện đã về VN</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Section 2: Preparation Level & Challenges -->
+          <div class="survey-form-section">
+            <h4>
+              <span style="background: var(--accent-primary); color: #ffffff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">2</span>
+              Mức Độ Chuẩn Bị & Khó Khăn Đã Trải Nghiệm
+            </h4>
+            <div class="form-field">
+              <label>Đánh giá mức độ chuẩn bị văn hóa trước khi khởi hành (1: Hoàn toàn chưa chuẩn bị - 5: Chuẩn bị rất kỹ lưỡng)</label>
+              <div class="likert-scale" id="surveyPrepScale">
+                <div class="likert-option" onclick="setLikert('prep', 1)">1 (Rất thấp)</div>
+                <div class="likert-option" onclick="setLikert('prep', 2)">2 (Thấp)</div>
+                <div class="likert-option selected" onclick="setLikert('prep', 3)">3 (Trung bình)</div>
+                <div class="likert-option" onclick="setLikert('prep', 4)">4 (Khá)</div>
+                <div class="likert-option" onclick="setLikert('prep', 5)">5 (Rất tốt)</div>
+              </div>
+            </div>
+
+            <div class="form-field" style="margin-top: 1.25rem;">
+              <label>Các nhóm khó khăn thực tế bạn gặp phải (Chọn các phương án phù hợp):</label>
+              <div class="checkbox-grid">
+                <label class="checkbox-label"><input type="checkbox" name="challenges" value="giao_tiep" checked> Giao tiếp & kính ngữ</label>
+                <label class="checkbox-label"><input type="checkbox" name="challenges" value="phap_ly" checked> Thủ tục hành chính, visa</label>
+                <label class="checkbox-label"><input type="checkbox" name="challenges" value="nha_o"> Thuê nhà & phân loại rác</label>
+                <label class="checkbox-label"><input type="checkbox" name="challenges" value="tai_chinh"> Mở ngân hàng, chuyển tiền</label>
+                <label class="checkbox-label"><input type="checkbox" name="challenges" value="y_te"> Y tế & đóng bảo hiểm</label>
+                <label class="checkbox-label"><input type="checkbox" name="challenges" value="cong_viec"> Văn hóa làm thêm (Baito)</label>
+                <label class="checkbox-label"><input type="checkbox" name="challenges" value="cong_dong"> Hòa nhập cộng đồng bản xứ</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Concrete Cultural Experience Submission -->
+          <div class="survey-form-section">
+            <h4>
+              <span style="background: var(--accent-primary); color: #ffffff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">3</span>
+              Chia Sẻ Tình Huống Văn Hoá Cụ Thể (Góp ý cơ sở tri thức)
+            </h4>
+            <div class="form-field">
+              <label for="surveyExpTitle">Tiêu đề tình huống ứng xử *</label>
+              <input type="text" id="surveyExpTitle" class="custom-input" placeholder="VD: Ứng xử khi bị ốm phải nghỉ ca làm việc tại quán ăn Nhật Bản" required>
+            </div>
+            <div class="form-field" style="margin-top: 0.85rem;">
+              <label for="surveyExpDomain">Lĩnh vực liên quan *</label>
+              <select id="surveyExpDomain" class="custom-select" required>
+                <!-- Rendered by JS -->
+              </select>
+            </div>
+            <div class="form-field" style="margin-top: 0.85rem;">
+              <label for="surveyExpText">Mô tả tình huống, cách giải quyết an toàn và lời khuyên *</label>
+              <textarea id="surveyExpText" rows="4" class="custom-textarea" placeholder="Mô tả cụ thể chuyện gì xảy ra, nên làm gì và tuyệt đối không nên làm gì để tránh rủi ro..." required></textarea>
+            </div>
+          </div>
+
+          <!-- Section 4: Product Use Intention -->
+          <div class="survey-form-section">
+            <h4>
+              <span style="background: var(--accent-primary); color: #ffffff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">4</span>
+              Mức Độ Sẵn Sàng Sử Dụng Ứng Dụng (Product Use Intention)
+            </h4>
+            <div class="form-field">
+              <label>Bạn có sẵn sàng sử dụng hệ thống "DCI - Phiên Dịch Văn Hoá Số" để chuẩn bị trước khi đi hoặc hỗ trợ sinh sống?</label>
+              <div class="likert-scale" id="surveyIntentionScale">
+                <div class="likert-option" onclick="setLikert('intention', 1)">1 (Không)</div>
+                <div class="likert-option" onclick="setLikert('intention', 2)">2 (Ít quan tâm)</div>
+                <div class="likert-option" onclick="setLikert('intention', 3)">3 (Có thể)</div>
+                <div class="likert-option selected" onclick="setLikert('intention', 4)">4 (Sẵn sàng)</div>
+                <div class="likert-option" onclick="setLikert('intention', 5)">5 (Rất sẵn sàng)</div>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit-survey">
+            Gửi đóng góp
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==============================================================
+         VIEW 4: INTERACTIVE DATA-DRIVEN DASHBOARD
+         ============================================================== -->
+    <section id="view-dashboard" class="view-section">
+      <!-- Admin Access Guard container (if user is Guest) -->
+      <div id="dashboardRoleGuard" style="display: none;">
+        <div class="access-guard-card">
+          <div class="guard-icon-wrap">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3 class="guard-title">Yêu cầu quyền Quản trị viên (Admin)</h3>
+          <p class="guard-desc">Mục Báo cáo Thống kê & Phân tích chuyên sâu chỉ dành cho quản trị viên và đối tác nghiên cứu của dự án.</p>
+          <button class="btn-switch-admin" onclick="switchRole('ADMIN')">Đăng nhập vai trò Admin</button>
+        </div>
+      </div>
+
+      <div id="dashboardMainContent">
+        <div class="page-header-compact">
+          <div class="page-header-title">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Analytics & Insights</span>
+          </div>
+          <div class="page-header-sub">Báo cáo phân tích dữ liệu khảo sát và chỉ số thích nghi thực tế</div>
+        </div>
+
+        <!-- Dashboard Controls & Global Slicers -->
+        <div class="dashboard-controls-bar">
+          <div class="dashboard-subtabs">
+            <button class="dash-tab-btn active" id="btn-dash-overview" onclick="switchDashboardTab('overview')">Tổng quan</button>
+            <button class="dash-tab-btn" id="btn-dash-prep" onclick="switchDashboardTab('prep')">Mức chuẩn bị</button>
+            <button class="dash-tab-btn" id="btn-dash-needs" onclick="switchDashboardTab('needs')">Nhu cầu thông tin</button>
+            <button class="dash-tab-btn" id="btn-dash-priorities" onclick="switchDashboardTab('priorities')">Ưu tiên hỗ trợ</button>
+          </div>
+
+          <div class="dashboard-filters-inline">
+            <div class="form-field" style="margin: 0;">
+              <select id="dashFilterCountry" class="custom-select" style="padding: 0.4rem 0.65rem;" onchange="updateDashboardFilters()">
+                <option value="ALL">Quốc gia: Tất cả</option>
+                <option value="JP">Nhật Bản</option>
+                <option value="KR">Hàn Quốc</option>
+                <option value="AU">Australia</option>
+              </select>
+            </div>
+            <div class="form-field" style="margin: 0;">
+              <select id="dashFilterExperience" class="custom-select" style="padding: 0.4rem 0.65rem;" onchange="updateDashboardFilters()">
+                <option value="ALL">Kinh nghiệm: Tất cả</option>
+                <option value="EXPERIENCED">Đã có kinh nghiệm</option>
+                <option value="PREPARING">Đang chuẩn bị</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 1: OVERVIEW -->
+        <div id="dash-panel-overview" class="dash-subpanel">
+          <!-- Published Evidence Benchmarks Cards -->
+          <div style="margin-bottom: 1.5rem;">
+            <h4 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-primary); margin-bottom: 0.75rem;">
+              Dữ liệu đối soát công bố chính thức
+            </h4>
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-info">
+                  <p>Japan JASSO 2023</p>
+                  <div class="kpi-value" style="color: var(--accent-primary);">46.7%</div>
+                  <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Người đi trước là nguồn tin tin cậy</div>
+                </div>
+                <div class="kpi-icon-wrap">JP</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-info">
+                  <p>Australia QILT 2024</p>
+                  <div class="kpi-value" style="color: var(--accent-emerald);">92.9%</div>
+                  <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Đánh giá tích cực về trải nghiệm sống</div>
+                </div>
+                <div class="kpi-icon-wrap">AU</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-info">
+                  <p>South Korea Study</p>
+                  <div class="kpi-value" style="color: var(--accent-amber);">22.0%</div>
+                  <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Gặp khó khăn tài chính & sốc văn hóa</div>
+                </div>
+                <div class="kpi-icon-wrap">KR</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Survey Summary KPIs -->
+          <h4 style="font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-primary); margin-bottom: 0.75rem;">
+            Chỉ số thích nghi từ khảo sát
+          </h4>
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Mẫu khảo sát đã chuẩn hóa</p>
+                <div class="kpi-value">300</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Phân bố đều tại 3 quốc gia</div>
+              </div>
+              <div class="kpi-icon-wrap">#</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Mức chuẩn bị tốt</p>
+                <div class="kpi-value" style="color: var(--accent-emerald);">45.3%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Chuẩn bị kỹ trước khi xuất cảnh</div>
+              </div>
+              <div class="kpi-icon-wrap">%</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Ý định dùng sản phẩm</p>
+                <div class="kpi-value" style="color: var(--accent-primary);">41.7%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Sẵn sàng ứng dụng giải pháp DCI</div>
+              </div>
+              <div class="kpi-icon-wrap">✓</div>
+            </div>
+          </div>
+
+          <!-- 2 Column Charts -->
+          <div class="analytics-grid-2">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h4>
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20V10M18 20V4M6 20v-6"/></svg>
+                  Nhóm khó khăn thích nghi nổi bật
+                </h4>
+                <span class="chart-subtitle">Tỷ lệ %</span>
+              </div>
+              <div class="bar-chart-list">
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Tham gia cộng đồng & cô lập</span><span>42.9%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 42.9%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Thủ tục hành chính & cư trú</span><span>37.6%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 37.6%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Học tập & môi trường công việc</span><span>34.9%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 34.9%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Giao tiếp & kính ngữ</span><span>31.0%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 31%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Cuộc sống hằng ngày & ẩm thực</span><span>25.7%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 25.7%;"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h4>
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2v10l8.5 5"/></svg>
+                  Định dạng hỗ trợ mong muốn
+                </h4>
+                <span class="chart-subtitle">Tỷ lệ bình chọn</span>
+              </div>
+              <div class="bar-chart-list">
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Nhắc việc theo thời gian thực</span><span>31.7%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 31.7%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Infographic / video ngắn trực quan</span><span>31.3%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 31.3%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Bảng so sánh VN vs Nước sở tại</span><span>29.3%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 29.3%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Thẻ thông tin kiểm chứng (Evidence Card)</span><span>28.7%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 28.7%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Chatbot hỏi đáp theo ngữ cảnh</span><span>24.7%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 24.7%;"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 2: PREPARATION & ADAPTATION -->
+        <div id="dash-panel-prep" class="dash-subpanel" style="display: none;">
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Mức chuẩn bị thấp</p>
+                <div class="kpi-value" style="color: var(--accent-rose);">37.7%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Thiếu tự tin trước khi đi</div>
+              </div>
+              <div class="kpi-icon-wrap">!</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Chưa chuẩn bị văn hóa</p>
+                <div class="kpi-value" style="color: var(--accent-amber);">21.7%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Hoàn toàn chưa tìm hiểu trước</div>
+              </div>
+              <div class="kpi-icon-wrap">0</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Mẫu có kinh nghiệm</p>
+                <div class="kpi-value" style="color: var(--accent-primary);">150</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Đã từng sống tại nước sở tại</div>
+              </div>
+              <div class="kpi-icon-wrap">Exp</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Tỷ lệ gặp khó khăn</p>
+                <div class="kpi-value" style="color: var(--accent-rose);">82.7%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Gặp trở ngại sau khi đến</div>
+              </div>
+              <div class="kpi-icon-wrap">%</div>
+            </div>
+          </div>
+
+          <div class="analytics-grid-2">
+            <!-- Preparation Gaps -->
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h4>
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Khoảng trống chuẩn bị trước khi đi
+                </h4>
+                <span class="chart-subtitle">% Chưa chuẩn bị</span>
+              </div>
+              <div class="bar-chart-list">
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Y tế, bảo hiểm & khẩn cấp</span><span>89.7%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 89.7%; background: var(--accent-rose);"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Visa, cư trú & hành chính</span><span>89.3%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 89.3%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Văn hóa học tập / nơi làm việc</span><span>88.3%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 88.3%;"></div></div>
+                </div>
+                <div class="bar-row">
+                  <div class="bar-labels"><span>Nhà ở và hợp đồng thuê</span><span>88.0%</span></div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 88.0%;"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Difficulty by Country Table -->
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <h4>
+                  <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+                  Điểm khó khăn trung bình (Thang 1 - 5)
+                </h4>
+              </div>
+              <div class="data-table-wrap">
+                <table class="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Chủ đề / Lĩnh vực</th>
+                      <th>Australia</th>
+                      <th>Nhật Bản</th>
+                      <th>Hàn Quốc</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Cuộc sống hằng ngày</td>
+                      <td class="heatmap-cell">2.38</td>
+                      <td class="heatmap-cell">2.33</td>
+                      <td class="heatmap-cell">2.68</td>
+                    </tr>
+                    <tr>
+                      <td>Giao tiếp & ứng xử</td>
+                      <td class="heatmap-cell">2.60</td>
+                      <td class="heatmap-cell">2.65</td>
+                      <td class="heatmap-cell">2.98</td>
+                    </tr>
+                    <tr>
+                      <td>Học tập / công việc</td>
+                      <td class="heatmap-cell">2.78</td>
+                      <td class="heatmap-cell">2.38</td>
+                      <td class="heatmap-cell">2.75</td>
+                    </tr>
+                    <tr>
+                      <td>Tham gia cộng đồng</td>
+                      <td class="heatmap-cell">3.00</td>
+                      <td class="heatmap-cell">3.48</td>
+                      <td class="heatmap-cell">3.16</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 3: INFORMATION NEEDS -->
+        <div id="dash-panel-needs" class="dash-subpanel" style="display: none;">
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Thiếu hụt thông tin</p>
+                <div class="kpi-value" style="color: var(--accent-primary);">80.3%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Thiếu thông tin văn hóa thực tế</div>
+              </div>
+              <div class="kpi-icon-wrap">Info</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Khó tìm nguồn chuẩn</p>
+                <div class="kpi-value" style="color: var(--accent-rose);">77.3%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Khó tiếp cận quy định cập nhật</div>
+              </div>
+              <div class="kpi-icon-wrap">?</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Tiếp cận nguồn chính thống</p>
+                <div class="kpi-value" style="color: var(--accent-emerald);">53.7%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Biết tới website cơ quan sở tại</div>
+              </div>
+              <div class="kpi-icon-wrap">Gov</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Dựa vào mạng xã hội</p>
+                <div class="kpi-value" style="color: var(--accent-amber);">52.0%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Nguy cơ gặp tin đồn sai lệch</div>
+              </div>
+              <div class="kpi-icon-wrap">Soc</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 4: PRIORITIES -->
+        <div id="dash-panel-priorities" class="dash-subpanel" style="display: none;">
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Sẵn sàng dùng thường xuyên</p>
+                <div class="kpi-value" style="color: var(--accent-emerald);">41.7%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Nhu cầu hỗ trợ liên tục</div>
+              </div>
+              <div class="kpi-icon-wrap">App</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Điểm ý định sử dụng</p>
+                <div class="kpi-value" style="color: var(--accent-primary);">3.03 / 5.0</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Mức đánh giá tích cực</div>
+              </div>
+              <div class="kpi-icon-wrap">Score</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-info">
+                <p>Ưu tiên hàng đầu</p>
+                <div class="kpi-value" style="color: var(--accent-primary);">31.7%</div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px;">Cảnh báo & nhắc nhở thời gian thực</div>
+              </div>
+              <div class="kpi-icon-wrap">Alert</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================================
+         VIEW 5: ADMIN APPROVAL QUEUE & DATA MANAGEMENT
+         ============================================================== -->
+    <section id="view-admin" class="view-section">
+      <!-- Admin Access Guard container (if user is Guest or regular User) -->
+      <div id="adminRoleGuard" style="display: none;">
+        <div class="access-guard-card">
+          <div class="guard-icon-wrap">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3 class="guard-title">Yêu cầu quyền Quản trị viên (Admin)</h3>
+          <p class="guard-desc">Hàng đợi kiểm duyệt và quản trị nguồn dữ liệu chỉ dành riêng cho Admin thẩm định tri thức của dự án DCI.</p>
+          <button class="btn-switch-admin" onclick="switchRole('ADMIN')">Đăng nhập vai trò Admin</button>
+        </div>
+      </div>
+
+      <div id="adminMainContent">
+        <div class="page-header-compact">
+          <div class="page-header-title">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Admin Service & Review Queue</span>
+          </div>
+          <div class="page-header-sub">Kiểm duyệt đóng góp cộng đồng & cập nhật kho Evidence Cards</div>
+        </div>
+
+        <div class="admin-dashboard-layout">
+          <!-- Interactive Admin Key Stats Row (Click to Filter) -->
+          <div class="admin-metrics-row">
+            <!-- Card 1: Pending Queue (Clickable) -->
+            <div class="admin-metric-card active" id="adminFilterCardPending" onclick="switchAdminQueueView('PENDING')">
+              <div class="kpi-info">
+                <p>Hàng Đợi Chờ Duyệt</p>
+                <div class="kpi-value" id="adminPendingStat" style="color: var(--accent-amber);">2</div>
+                <div class="kpi-subtext">Bấm để xem mục chờ duyệt</div>
+              </div>
+              <div class="kpi-icon-wrap">⏳</div>
+            </div>
+
+            <!-- Card 2: Approved / Processed Queue (Clickable) -->
+            <div class="admin-metric-card" id="adminFilterCardApproved" onclick="switchAdminQueueView('PROCESSED')">
+              <div class="kpi-info">
+                <p>Đã Duyệt & Lịch Sử</p>
+                <div class="kpi-value" id="adminApprovedStat" style="color: var(--accent-emerald);">1</div>
+                <div class="kpi-subtext">Bấm để xem lịch sử xử lý</div>
+              </div>
+              <div class="kpi-icon-wrap">✓</div>
+            </div>
+
+            <!-- Card 3: Evidence Cards Count (Clickable to jump to Explorer) -->
+            <div class="admin-metric-card" id="adminFilterCardEvidence" onclick="switchView('explorer')">
+              <div class="kpi-info">
+                <p>Kho Dữ Liệu Kiểm Chuẩn</p>
+                <div class="kpi-value" id="adminCardsCountStat">9</div>
+                <div class="kpi-subtext">Xem toàn bộ thẻ đã phát hành</div>
+              </div>
+              <div class="kpi-icon-wrap">📚</div>
+            </div>
+          </div>
+
+          <!-- Approval Queue Container -->
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.5rem;">
+            <div class="queue-filter-toolbar">
+              <h3 style="font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);" id="adminQueueSectionTitle">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Hàng Đợi Chờ Duyệt (Pending Queue)
+              </h3>
+
+              <!-- Sub-filter pills when viewing processed history -->
+              <div class="queue-subfilters" id="adminProcessedSubfilters" style="display: none;">
+                <button class="queue-subfilter-btn active" id="subfilter-all" onclick="setAdminProcessedSubfilter('ALL')">Tất cả</button>
+                <button class="queue-subfilter-btn" id="subfilter-approved" onclick="setAdminProcessedSubfilter('APPROVED')">Đã chấp nhận</button>
+                <button class="queue-subfilter-btn" id="subfilter-rejected" onclick="setAdminProcessedSubfilter('REJECTED')">Đã từ chối</button>
+              </div>
+            </div>
+
+            <div id="adminQueueContainer">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Master Data Sources List (Cleaned: removed arbitrary confidence % column) -->
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.5rem;">
+            <h3 style="font-size: 1.05rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              Danh Mục Nguồn Dữ Liệu Đối Soát Chính Thống
+            </h3>
+            <div class="data-table-wrap">
+              <table class="custom-table">
+                <thead>
+                  <tr>
+                    <th>Tổ chức / Cơ quan</th>
+                    <th>Quốc gia</th>
+                    <th>Loại nguồn</th>
+                    <th>Lĩnh vực áp dụng</th>
+                    <th>Trạng thái kết nối</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>JASSO (Japan Student Services Org)</strong></td>
+                    <td>Nhật Bản</td>
+                    <td>Cơ quan chính phủ</td>
+                    <td>Học tập, Baito, Đời sống</td>
+                    <td><span class="badge-status badge-approved">Đang hoạt động</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>ISA (Immigration Services Agency)</strong></td>
+                    <td>Nhật Bản</td>
+                    <td>Cục Xuất nhập cảnh</td>
+                    <td>Hành chính - Pháp lý, Visa</td>
+                    <td><span class="badge-status badge-approved">Đang hoạt động</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Korea MOFA (Bộ Ngoại giao Hàn Quốc)</strong></td>
+                    <td>Hàn Quốc</td>
+                    <td>Chính phủ Hàn Quốc</td>
+                    <td>Hành chính, Cư trú, Đời sống</td>
+                    <td><span class="badge-status badge-approved">Đang hoạt động</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>NHIS (Bảo hiểm Y tế Quốc dân Hàn)</strong></td>
+                    <td>Hàn Quốc</td>
+                    <td>Cơ quan y tế công quyền</td>
+                    <td>Y tế – Bảo hiểm</td>
+                    <td><span class="badge-status badge-approved">Đang hoạt động</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Fair Work Ombudsman Australia</strong></td>
+                    <td>Australia</td>
+                    <td>Cơ quan bảo vệ lao động</td>
+                    <td>Việc làm, Lương tối thiểu, Visa 500</td>
+                    <td><span class="badge-status badge-approved">Đang hoạt động</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Cultural Atlas & AUSCO</strong></td>
+                    <td>Đa quốc gia</td>
+                    <td>Nghiên cứu văn hóa xã hội</td>
+                    <td>Giao tiếp, Ứng xử, Quy chuẩn bàn ăn</td>
+                    <td><span class="badge-status badge-approved">Đang hoạt động</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODAL: EVIDENCE CARD DETAIL ==================== -->
+  <div class="modal-backdrop" id="evidenceDetailModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <div class="card-badges" id="modalCardBadges" style="margin-bottom: 0.5rem;"></div>
+          <h3 id="modalCardTitle"></h3>
+        </div>
+        <button class="btn-close-modal" onclick="closeModal('evidenceDetailModal')">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 1rem;" id="modalCardBody">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: SUCCESS SUBMISSION POPUP ==================== -->
+  <div class="modal-backdrop" id="surveySuccessModal">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="success-modal-content">
+        <div class="success-check-badge">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3 class="success-title">Gửi đóng góp thành công!</h3>
+        <p class="success-desc">
+          Cảm ơn bạn đã đóng góp tình huống thực tế cho dự án DCI. Đóng góp của bạn sẽ giúp hoàn thiện cơ sở tri thức hỗ trợ cộng đồng người Việt hội nhập tự tin và an toàn hơn.
+        </p>
+        <div class="success-actions">
+          <button class="btn-card-action" onclick="closeModal('surveySuccessModal')" style="padding: 0.6rem 1.4rem; font-size: 0.85rem;">Hoàn tất</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: ROLE SELECTOR / LOGIN ==================== -->
+  <div class="modal-backdrop" id="roleSelectModal">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem;">Chọn vai trò người dùng (Role Switcher)</h3>
+        <button class="btn-close-modal" onclick="closeModal('roleSelectModal')">&times;</button>
+      </div>
+      <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0.85rem;">
+        Hệ thống hỗ trợ phân quyền người dùng theo Đề án. Bạn có thể chuyển đổi nhanh vai trò để kiểm thử các quyền hạn tương ứng:
+      </p>
+
+      <div class="role-options-grid">
+        <div class="role-option-card" onclick="switchRole('GUEST')">
+          <div>
+            <div style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">Khách (Guest)</div>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">Trò chuyện với AI & tra cứu thông tin công khai</div>
+          </div>
+          <span class="role-tag-badge guest">Khách</span>
+        </div>
+
+        <div class="role-option-card" onclick="switchRole('USER')">
+          <div>
+            <div style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">Người dùng (Thành viên)</div>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">Được phép gửi đóng góp tình huống & lưu ngữ cảnh</div>
+          </div>
+          <span class="role-tag-badge">Thành viên</span>
+        </div>
+
+        <div class="role-option-card" onclick="switchRole('ADMIN')">
+          <div>
+            <div style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">Quản trị viên (Admin)</div>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">Toàn quyền duyệt hàng đợi và xem báo cáo thống kê</div>
+          </div>
+          <span class="role-tag-badge admin">Admin</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: PROJECT INFO ==================== -->
+  <div class="modal-backdrop" id="projectInfoModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 style="font-size: 1.18rem;">Về Dự Án DCI - Phiên Dịch Văn Hoá Số</h3>
+        <button class="btn-close-modal" onclick="closeModal('projectInfoModal')">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 1rem; font-size: 0.88rem; color: var(--text-secondary);">
+        <p><strong>Tên giải pháp:</strong> DCI (Digital Cultural Interpreter) – Phiên dịch văn hóa số dựa trên RAG AI.</p>
+        <p><strong>Lĩnh vực:</strong> Data-Driven Business • Social Tech (Hỗ trợ thích nghi văn hoá và hội nhập cho cộng đồng người Việt tại Nhật Bản, Hàn Quốc, Australia).</p>
+        <div style="background: var(--bg-secondary); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+          <strong style="color: var(--text-primary);">Team Asteria (UIT - ĐHQG TP.HCM):</strong>
+          <ul style="margin-top: 0.4rem; padding-left: 1.25rem;">
+            <li>Trần Đình Phúc (Trưởng nhóm - MSSV: 24521397)</li>
+            <li>Huỳnh Đăng Khoa (MSSV: 24522074)</li>
+            <li>Nguyễn Hoài Nam (MSSV: 24521109)</li>
+            <li>Nguyễn Triệu Hoàng (MSSV: 23520534)</li>
+            <li>Đặng Trúc Mai (MSSV: 24521037)</li>
+          </ul>
+        </div>
+        <p>DCI kết hợp mô hình RAG với 9 lĩnh vực đời sống chuẩn hóa và kho bằng chứng kiểm chuẩn, ngăn chặn hiện tượng suy diễn sai lệch trong các vấn đề pháp lý và văn hóa.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Load Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
