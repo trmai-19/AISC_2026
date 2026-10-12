@@ -32,6 +32,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Điều hướng màn hình
 function switchView(viewId) {
+  // Chặn hoàn toàn truy cập trang Admin nếu không phải Quản trị viên (ADMIN)
+  if (viewId === 'admin' && typeof currentUserRole !== 'undefined' && currentUserRole !== 'ADMIN') {
+    viewId = 'chat';
+  }
+
   currentView = viewId;
 
   // Đổi view section

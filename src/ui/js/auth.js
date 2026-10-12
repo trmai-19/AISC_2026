@@ -61,6 +61,20 @@ function applyRoleUI() {
     }
   }
 
+  // Quản lý hiển thị tab Quản Trị (Chỉ hiển thị khi đăng nhập vai trò ADMIN)
+  const adminTabBtn = document.getElementById('tab-btn-admin');
+  const isAdmin = currentUserRole === 'ADMIN';
+  if (adminTabBtn) {
+    adminTabBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+  }
+
+  // Nếu không phải Quản trị viên mà đang ở màn hình admin -> tự động chuyển về chat
+  if (!isAdmin && typeof currentView !== 'undefined' && currentView === 'admin') {
+    if (typeof switchView === 'function') {
+      switchView('chat');
+    }
+  }
+
   // Hỗ trợ nút đăng nhập / đăng xuất cũ nếu có trên giao diện
   const authActionBtn = document.getElementById('headerAuthActionBtn');
   if (authActionBtn) {
@@ -122,19 +136,13 @@ function logoutFromProfileModal() {
 // Kiểm tra quyền truy cập theo từng màn hình
 function checkViewPermissions(viewId) {
   // Quyền truy cập trang Admin: chỉ dành cho role ADMIN
-  const adminGuard = document.getElementById('adminRoleGuard');
-  const adminContent = document.getElementById('adminMainContent');
-  if (adminGuard && adminContent) {
-    if (viewId === 'admin') {
-      if (currentUserRole !== 'ADMIN') {
-        adminGuard.style.display = 'block';
-        adminContent.style.display = 'none';
-      } else {
-        adminGuard.style.display = 'none';
-        adminContent.style.display = 'block';
-      }
+  if (viewId === 'admin' && currentUserRole !== 'ADMIN') {
+    if (typeof switchView === 'function') {
+      switchView('chat');
     }
+    return false;
   }
+  return true;
 }
 
 // Đăng nhập tài khoản qua API thực tế
