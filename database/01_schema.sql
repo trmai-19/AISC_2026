@@ -5,8 +5,9 @@
 -- Kiến trúc: Enterprise Scalable Knowledge Mart (10 Bảng)
 -- =====================================================================
 
--- 0. KÍCH HOẠT EXTENSION PGVECTOR PHỤC VỤ RAG
+-- 0. KÍCH HOẠT EXTENSION PGVECTOR & PG_TRGM PHỤC VỤ HYBRID RAG
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Xóa bảng cũ (theo thứ tự phụ thuộc) để đảm bảo tính idempotent
 DROP TABLE IF EXISTS evidence_vectors CASCADE;

@@ -88,23 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ===================================================================
-// ROLE MANAGEMENT & PERMISSIONS (PAGE 5 FEEDBACK)
+// ROLE MANAGEMENT & PERMISSIONS (REAL AUTH)
 // ===================================================================
-function openRoleModal() {
-  const modal = document.getElementById('roleSelectModal');
-  if (modal) modal.classList.add('active');
-}
 
-function switchRole(role) {
-  if (!ROLE_CONFIGS[role]) return;
-  currentUserRole = role;
-  applyRoleUI();
-  closeModal('roleSelectModal');
-  showToast(`Đã chuyển vai trò: ${ROLE_CONFIGS[role].label} (${ROLE_CONFIGS[role].name})`);
-
-  // Refresh current view permissions
-  checkViewPermissions(currentView);
-}
 
 function applyRoleUI() {
   const badge = document.getElementById('headerRoleBadge');

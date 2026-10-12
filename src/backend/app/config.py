@@ -11,8 +11,14 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
     
     # Database
-    DATABASE_URL: str = "postgresql://postgres:postgrespassword@localhost:5432/aisc_db"
+    DATABASE_URL: str = "postgresql+psycopg2://postgres:postgrespassword@localhost:5432/aisc_db"
     
+    @field_validator("DATABASE_URL", mode="before")
+    def format_database_url(cls, v):
+        if isinstance(v, str) and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+psycopg2://", 1)
+        return v
+
     # CORS
     CORS_ORIGINS: Union[str, List[str]] = ["*"]
     
@@ -28,7 +34,7 @@ class Settings(BaseSettings):
     # AI / LLM Configuration
     GEMINI_API_KEY: str = ""
     EMBEDDING_MODEL: str = "bge-m3"
-    CONFIDENCE_THRESHOLD: float = 0.75
+    CONFIDENCE_THRESHOLD: float = 0.70
     
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),

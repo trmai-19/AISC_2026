@@ -12,6 +12,8 @@ class ChatMessageRequest(BaseModel):
 
 class ChatStructuredResponse(BaseModel):
     success: bool
+    response_type: Optional[str] = "RAG"  # "RAG", "GREETING", "IDENTITY", "OUT_OF_SCOPE"
+    direct_message: Optional[str] = None
     context_analysis: Optional[str] = None
     safe_action: Optional[str] = None
     donots: Optional[str] = None

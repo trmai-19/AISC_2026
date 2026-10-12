@@ -146,11 +146,21 @@ AISC_2026/
 │   │   │   └── main.py         # Điểm khởi chạy ứng dụng FastAPI & CORS
 │   │   ├── requirements.txt    # Danh mục thư viện Python phụ thuộc
 │   │   └── run.py              # Script khởi động máy chủ Uvicorn
-│   └── ui/                     # Giao diện người dùng Web Frontend
-│       ├── index.html          # Giao diện chính (Dual-mode)
-│       ├── styles.css          # Hệ thống CSS thiết kế hiện đại
-│       ├── app.js              # Xử lý tương tác & kết nối REST API kép
-│       └── data.js             # Dữ liệu tĩnh dự phòng (Mock data)
+│   └── ui/                     # Giao diện người dùng Web Frontend (Modularized)
+│       ├── index.html          # Trang chủ ứng dụng (Chat Copilot, Tra cứu, Khảo sát, Admin)
+│       ├── login.html          # Trang Đăng nhập & Đăng ký tài khoản (Auth)
+│       ├── dashboard.html      # Trang Báo cáo Thống kê & Phân tích chuyên sâu (Độc lập)
+│       ├── styles.css          # Hệ thống CSS thiết kế hiện đại & Design System
+│       ├── data.js             # Dữ liệu tĩnh dự phòng (Mock data)
+│       └── js/                 # Thư mục mã nguồn Javascript tách module độc lập
+│           ├── api.js          # Quản lý kết nối & gọi REST API FastAPI
+│           ├── auth.js         # Quản lý phiên làm việc, Đăng nhập/Đăng ký/Đăng xuất & Phân quyền
+│           ├── chat.js         # Trợ lý Copilot RAG, trích dẫn đối soát & lịch sử chat
+│           ├── explorer.js     # Bộ lọc đa tiêu chí & xem chi tiết Evidence Cards
+│           ├── survey.js       # Thu thập khảo sát cộng đồng & chuẩn hóa PII
+│           ├── admin.js        # Hàng đợi kiểm duyệt tri thức & quản trị viên
+│           ├── dashboard.js    # Phân tích thống kê & bộ lọc trực quan hóa dữ liệu
+│           └── main.js         # Điều phối ứng dụng, chuyển view, theme sáng/tối
 ├── .gitignore                  # Bỏ qua venv, .env, ảnh và tài liệu nặng
 └── README.md                   # Hướng dẫn vận hành dự án
 ```

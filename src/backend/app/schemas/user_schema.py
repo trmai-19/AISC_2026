@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional, Literal
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, ConfigDict
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str
     full_name: str
     role: Literal["GUEST", "USER", "ADMIN"]
 
@@ -30,3 +30,26 @@ class UserProfileUpdate(BaseModel):
     target_country: Optional[str] = "JP"
     purpose: Optional[str] = "DU_HOC"
     stage: Optional[str] = "PREPARING"
+
+# Schemas phục vụ luồng Đăng nhập & Đăng ký
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    full_name: str
+    email: str
+    password: str
+    target_country: Optional[str] = "JP"
+    purpose: Optional[Literal["DU_HOC", "LAO_DONG", "DINH_CU"]] = "DU_HOC"
+    stage: Optional[str] = "PREPARING"
+
+class AuthResponse(BaseModel):
+    status: str
+    message: str
+    user_id: str
+    email: str
+    full_name: str
+    role: str
+    token: Optional[str] = None
+    profile: Optional[UserProfileSchema] = None
