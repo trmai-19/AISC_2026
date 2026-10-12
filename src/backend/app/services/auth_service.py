@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
+import bcrypt
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.repositories.user_repository import UserRepository
@@ -13,12 +14,29 @@ from app.schemas.user_schema import (
     UserProfileUpdate
 )
 
+def hash_password(password: str) -> str:
+    """Mã hóa mật khẩu bằng thuật toán bcrypt với salt bảo mật cao"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Kiểm tra mật khẩu người dùng với chuỗi hash bcrypt trong CSDL"""
+    if not plain_password or not hashed_password:
+        return False
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception:
+        return False
+
 class AuthService:
     @staticmethod
     def login(db: Session, req: LoginRequest) -> AuthResponse:
         clean_email = req.email.strip().lower()
         user = UserRepository.get_by_email(db, clean_email)
         if not user:
+            raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không chính xác.")
+
+        # Xác thực mật khẩu thực tế bằng bcrypt
+        if not verify_password(req.password, str(user.password_hash or "")):
             raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không chính xác.")
 
         profile_schema = None
@@ -47,11 +65,14 @@ class AuthService:
         if existing:
             raise HTTPException(status_code=400, detail="Email này đã được đăng ký trong hệ thống.")
 
+        # Mã hóa mật khẩu người dùng thực tế
+        hashed_pw = hash_password(req.password)
+
         new_user_id = f"usr-2026-{uuid.uuid4().hex[:12]}"
         new_user = User(
             user_id=new_user_id,
             email=clean_email,
-            password_hash="$2b$12$eX8mP.F9dE1K9LzQ7bV.eu9Y1H0aM2k4P5q8W3e7R6t9Y0u1I2o3P",
+            password_hash=hashed_pw,
             full_name=req.full_name.strip(),
             role="USER",
             created_at=datetime.utcnow()
