@@ -40,3 +40,6 @@ data/01_data_lake_raw/*
 !data/01_data_lake_raw/korea/
 !data/01_data_lake_raw/australia/
 !data/README.md
+data/extracted_dashboard/
+friend_code/
+powershell.cmd
