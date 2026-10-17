@@ -28,7 +28,7 @@ const APP_DATA = {
       code: "DOM-01",
       name: "Hành chính – Pháp lý",
       icon: "scale",
-      color: "#2563eb",
+      color: "var(--accent-primary)",
       desc: "Thủ tục visa, thẻ cư trú, đăng ký thường trú, lao động, hợp đồng và quyền công dân."
     },
     {
@@ -36,7 +36,7 @@ const APP_DATA = {
       code: "DOM-02",
       name: "Học tập – Công việc",
       icon: "briefcase",
-      color: "#2563eb",
+      color: "var(--accent-ochre)",
       desc: "Văn hóa công sở, làm thêm (baito), thi cử, đạo đức học thuật và quan hệ cấp trên - cấp dưới."
     },
     {
@@ -44,7 +44,7 @@ const APP_DATA = {
       code: "DOM-03",
       name: "Giao tiếp – Văn hoá ứng xử",
       icon: "message-circle",
-      color: "#2563eb",
+      color: "var(--accent-ocean)",
       desc: "Kính ngữ, cúi chào, xưng hô, giao tiếp phi ngôn ngữ, văn hóa xin lỗi và thể diện."
     },
     {
@@ -52,7 +52,7 @@ const APP_DATA = {
       code: "DOM-04",
       name: "Nhà ở – Tiện ích",
       icon: "home",
-      color: "#2563eb",
+      color: "var(--accent-forest)",
       desc: "Thuê nhà, tiền lễ (Reikin/Shikikin), phân loại rác, tiếng ồn và nội quy căn hộ."
     },
     {
@@ -60,7 +60,7 @@ const APP_DATA = {
       code: "DOM-05",
       name: "Tài chính – Ngân hàng",
       icon: "credit-card",
-      color: "#2563eb",
+      color: "var(--accent-ochre)",
       desc: "Mở tài khoản ngân hàng, chuyển tiền kiều hối, mã số thuế và thanh toán điện tử."
     },
     {
@@ -68,7 +68,7 @@ const APP_DATA = {
       code: "DOM-06",
       name: "Y tế – Bảo hiểm",
       icon: "activity",
-      color: "#2563eb",
+      color: "var(--accent-forest)",
       desc: "Bảo hiểm y tế quốc dân (Kokumin Kenko Hoken / NHIS / OSHC), khám chữa bệnh và cấp cứu."
     },
     {
@@ -76,7 +76,7 @@ const APP_DATA = {
       code: "DOM-07",
       name: "Giao thông – Đi lại",
       icon: "map-pin",
-      color: "#2563eb",
+      color: "var(--accent-ocean)",
       desc: "Tàu điện, xe buýt, thẻ IC/Opal, văn hóa nhường ghế, quy định đi xe đạp và bằng lái."
     },
     {
@@ -84,7 +84,7 @@ const APP_DATA = {
       code: "DOM-08",
       name: "Đời sống hằng ngày – Ẩm thực",
       icon: "coffee",
-      color: "#2563eb",
+      color: "var(--accent-forest)",
       desc: "Quy chuẩn bàn ăn, rót rượu, tiền tip, chia hóa đơn (betsu-betsu / Dutch treat), siêu thị."
     },
     {
@@ -92,7 +92,7 @@ const APP_DATA = {
       code: "DOM-09",
       name: "Cộng đồng – Mạng lưới hỗ trợ",
       icon: "users",
-      color: "#2563eb",
+      color: "var(--accent-ocean)",
       desc: "Hội đồng hương, hỗ trợ sinh viên quốc tế, cơ quan đại diện ngoại giao và các tổ chức thiện nguyện."
     }
   ],

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DCI - Digital Cultural Interpreter (Phiên Dịch Văn Hoá Số)</title>
   <meta name="description" content="Hệ thống hỗ trợ thích nghi văn hoá và hội nhập cho cộng đồng người Việt tại Nhật Bản, Hàn Quốc, Australia dựa trên RAG AI và dữ liệu kiểm chứng.">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/><path d='M2 12h20'/></svg>">
+  <link rel="stylesheet" href="styles.css?v=20261018_v3">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310B981' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><path d='M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20'/><path d='M2 12h20'/></svg>">
 </head>
 <body>
 
@@ -29,7 +29,7 @@
 
       <!-- Navigation Tabs -->
       <nav class="nav-tabs" role="tablist">
-        <button class="nav-tab-btn active" id="tab-btn-chat" onclick="switchView('chat')">
+        <button class="nav-tab-btn" id="tab-btn-chat" onclick="switchView('chat')">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           Trợ Lý AI
         </button>
@@ -41,7 +41,7 @@
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Đóng Góp Dữ Liệu
         </button>
-        <button class="nav-tab-btn" id="tab-btn-dashboard" onclick="switchView('dashboard')">
+        <button class="nav-tab-btn active" id="tab-btn-dashboard" onclick="switchView('dashboard')">
           <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
           Thống Kê
         </button>
@@ -84,7 +84,7 @@
     <!-- ==============================================================
          VIEW 1: RAG CHATBOT ASSISTANT (TRỢ LÝ DCI COPILOT)
          ============================================================== -->
-    <section id="view-chat" class="view-section active">
+    <section id="view-chat" class="view-section">
       <div class="page-header-compact">
         <div class="page-header-title">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
@@ -266,7 +266,7 @@
           <!-- Section 1: Demographics -->
           <div class="survey-form-section">
             <h4>
-              <span style="background: var(--accent-primary); color: #ffffff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">1</span>
+              <span style="background: var(--accent-primary); color: var(--accent-contrast); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">1</span>
               Thông Tin Hành Trình
             </h4>
             <div class="form-grid-2">
@@ -302,7 +302,7 @@
           <!-- Section 2: Preparation Level & Challenges -->
           <div class="survey-form-section">
             <h4>
-              <span style="background: var(--accent-primary); color: #ffffff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">2</span>
+              <span style="background: var(--accent-primary); color: var(--accent-contrast); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">2</span>
               Mức Độ Chuẩn Bị & Khó Khăn Đã Trải Nghiệm
             </h4>
             <div class="form-field">
@@ -333,7 +333,7 @@
           <!-- Section 3: Concrete Cultural Experience Submission -->
           <div class="survey-form-section">
             <h4>
-              <span style="background: var(--accent-primary); color: #ffffff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">3</span>
+              <span style="background: var(--accent-primary); color: var(--accent-contrast); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">3</span>
               Chia Sẻ Tình Huống Văn Hoá Cụ Thể (Góp ý cơ sở tri thức)
             </h4>
             <div class="form-field">
@@ -355,7 +355,7 @@
           <!-- Section 4: Product Use Intention -->
           <div class="survey-form-section">
             <h4>
-              <span style="background: var(--accent-primary); color: #ffffff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">4</span>
+              <span style="background: var(--accent-primary); color: var(--accent-contrast); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">4</span>
               Mức Độ Sẵn Sàng Sử Dụng Ứng Dụng (Product Use Intention)
             </h4>
             <div class="form-field">
@@ -380,7 +380,7 @@
     <!-- ==============================================================
          VIEW 4: INTERACTIVE DATA-DRIVEN DASHBOARD (PORTAL)
          ============================================================== -->
-    <section id="view-dashboard" class="view-section">
+    <section id="view-dashboard" class="view-section active">
       <div id="dashboard-container">
         <!-- Khu vực để trống dành riêng cho Module Thống kê & Báo cáo phát triển độc lập -->
       </div>
@@ -587,7 +587,7 @@
       <div class="profile-modal-body" style="padding: 0.5rem 0 0.5rem;">
         <!-- Avatar & Basic info banner -->
         <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.25rem;">
-          <div class="user-avatar-large" id="profileModalAvatar" style="width: 52px; height: 52px; border-radius: 50%; background: var(--gradient-brand); color: #fff; font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.35);">
+          <div class="user-avatar-large" id="profileModalAvatar" style="width: 52px; height: 52px; border-radius: 50%; background: var(--gradient-brand); color: var(--accent-contrast); font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: var(--shadow-sm);">
             U
           </div>
           <div style="flex: 1; min-width: 0;">
@@ -659,15 +659,16 @@
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Load Modular Scripts -->
-  <script src="data.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/chat.js"></script>
-  <script src="js/explorer.js"></script>
-  <script src="js/survey.js"></script>
-  <script src="js/admin.js"></script>
-  <script src="js/dashboard.js"></script>
-  <script src="js/main.js"></script>
+  <!-- Load Modular Scripts with Cache-Buster -->
+  <script src="data.js?v=20261018_v3"></script>
+  <script src="js/api.js?v=20261018_v3"></script>
+  <script src="js/auth.js?v=20261018_v3"></script>
+  <script src="js/chat.js?v=20261018_v3"></script>
+  <script src="js/explorer.js?v=20261018_v3"></script>
+  <script src="js/survey.js?v=20261018_v3"></script>
+  <script src="js/admin.js?v=20261018_v3"></script>
+  <script src="js/dashboard_data.js?v=20261018_v3"></script>
+  <script src="js/dashboard.js?v=20261018_v3"></script>
+  <script src="js/main.js?v=20261018_v3"></script>
 </body>
 </html>

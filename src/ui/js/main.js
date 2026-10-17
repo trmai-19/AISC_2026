@@ -3,7 +3,7 @@
  * Điều phối ứng dụng, chuyển đổi màn hình, giao diện Sáng/Tối và Modals
  */
 
-let currentView = 'chat';
+let currentView = 'dashboard';
 
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Khởi tạo xác thực & người dùng
@@ -17,6 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof renderAdminQueue === 'function') renderAdminQueue();
   if (typeof updateUserContext === 'function') updateUserContext();
   if (typeof updateQueueBadge === 'function') updateQueueBadge();
+  if (typeof initDashboard === 'function') initDashboard();
+
+  // Kích hoạt mặc định màn hình Thống Kê (Dashboard)
+  switchView('dashboard');
 
   // 3. Kiểm tra kết nối Backend FastAPI
   if (typeof checkBackendHealth === 'function') {
@@ -48,6 +52,11 @@ function switchView(viewId) {
   document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
   const targetBtn = document.getElementById(`tab-btn-${viewId}`);
   if (targetBtn) targetBtn.classList.add('active');
+
+  // Khởi tạo Dashboard nếu chuyển đến tab thống kê
+  if (viewId === 'dashboard' && typeof initDashboard === 'function') {
+    initDashboard();
+  }
 
   // Kiểm tra quyền truy cập (Role Guard)
   if (typeof checkViewPermissions === 'function') {
