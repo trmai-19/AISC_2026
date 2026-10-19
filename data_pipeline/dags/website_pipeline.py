@@ -1,14 +1,29 @@
+import subprocess
+import sys
+
 from datetime import timedelta
 
 import pendulum
 
-from airflow.sdk import DAG
-from airflow.providers.standard.operators.bash import BashOperator
+from airflow.sdk import dag, task
 
 
-with DAG(
+def run_module(module):
+    subprocess.run(
+        [
+            sys.executable,
+            "-u",
+            "-m",
+            module,
+        ],
+        cwd="/app",
+        check=True,
+    )
+
+
+@dag(
     dag_id="aisc_website_pipeline",
-    description="Website -> MinIO -> Staging -> Core",
+    description="Update Website Core and prepare RAG corpus",
     start_date=pendulum.datetime(
         2026, 10, 19,
         tz="Asia/Ho_Chi_Minh",
@@ -20,15 +35,28 @@ with DAG(
     default_args={
         "retries": 1,
         "retry_delay": timedelta(minutes=1),
+        "execution_timeout": timedelta(minutes=10),
     },
-    tags=["aisc", "website", "data"],
-) as dag:
-    run_pipeline = BashOperator(
-        task_id="update_website_data",
-        bash_command=(
-            "python -u -m orchestration.run_website"
-        ),
-        cwd="/app",
-        execution_timeout=timedelta(minutes=10),
-        do_xcom_push=False,
-    )
+    tags=["aisc", "website", "rag"],
+)
+def website_pipeline():
+
+    @task(do_xcom_push=False)
+    def update_website_data():
+        run_module(
+            "orchestration.run_website"
+        )
+
+    @task(do_xcom_push=False)
+    def prepare_rag_corpus():
+        run_module(
+            "transforms.prepare_rag"
+        )
+
+    website = update_website_data()
+    rag = prepare_rag_corpus()
+
+    website >> rag
+
+
+website_pipeline()
