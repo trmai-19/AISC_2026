@@ -107,7 +107,60 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  airflow:
+    build:
+      context: ./data_pipeline
+      dockerfile: Dockerfile.airflow
+
+    container_name: aisc_airflow
+    working_dir: /app
+    restart: unless-stopped
+
+    command:
+      - bash
+      - -ec
+      - |
+        cp /app/config/airflow_passwords.json /opt/airflow/airflow_passwords.json
+        exec airflow standalone
+
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://aisc_data:aisc_data_local_2026@postgres_transformed:5432/airflow_meta
+
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Ho_Chi_Minh
+      AIRFLOW__CORE__PARALLELISM: "1"
+
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: "admin:admin"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/airflow_passwords.json
+
+      SOURCE_DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/aisc_db
+      TRANSFORMED_DATABASE_URL: postgresql://aisc_data:aisc_data_local_2026@postgres_transformed:5432/aisc_data
+
+      S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: aisc_admin
+      AWS_SECRET_ACCESS_KEY: aisc_minio_local_2026
+      AWS_DEFAULT_REGION: us-east-1
+      RAW_BUCKET: aisc-raw
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    volumes:
+      - airflow_home:/opt/airflow
+      - ./data_pipeline:/app:ro
+      - ./data_pipeline/dags:/opt/airflow/dags:ro
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres_transformed:
+        condition: service_healthy
+      minio:
+        condition: service_started
 volumes:
   pgdata:
   minio_data:
   pgdata_transformed:
+  airflow_home:
