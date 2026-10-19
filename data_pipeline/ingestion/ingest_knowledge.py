@@ -5,9 +5,12 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import uuid
 import zipfile
+
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from http.client import HTTPException
 from pathlib import Path, PurePosixPath
 from urllib.error import HTTPError, URLError
@@ -18,16 +21,82 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 
 
-def fetch(url):
-    """Tải dữ liệu, thử tối đa 5 lần khi gặp lỗi tạm thời."""
-    request = Request(
-        url,
-        headers={"User-Agent": "AISC-DataPipeline/1.0"},
+ALLOWED_COUNTRIES = {"JP", "KR", "AU"}
+MAX_ATTEMPTS = 5
+REQUEST_TIMEOUT = 120
+
+
+def utc_now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+# Đọc chữ trong HTML để kiểm tra nội dung.
+# File raw tải về vẫn được lưu nguyên bản.
+class PageTextParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.title_parts = []
+        self.in_title = False
+        self.hidden_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "title":
+            self.in_title = True
+
+        if tag in {"script", "style", "noscript", "template"}:
+            self.hidden_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self.in_title = False
+
+        if tag in {"script", "style", "noscript", "template"}:
+            self.hidden_depth = max(0, self.hidden_depth - 1)
+
+    def handle_data(self, data):
+        if self.in_title:
+            self.title_parts.append(data)
+
+        if self.hidden_depth == 0:
+            self.parts.append(data)
+
+
+def normalize_text(text):
+    return " ".join(
+        unicodedata.normalize("NFKC", text)
+        .replace("\u200b", "")
+        .split()
+    ).casefold()
+
+
+def read_page_text(data):
+    parser = PageTextParser()
+    parser.feed(data.decode("utf-8", errors="replace"))
+    parser.close()
+
+    page_text = normalize_text(" ".join(parser.parts))
+    page_title = " ".join(
+        " ".join(parser.title_parts).split()
     )
 
-    for attempt in range(5):
+    return page_text, page_title
+
+
+def fetch(url):
+    request = Request(
+        url,
+        headers={
+            "User-Agent": "AISC-DataPipeline/1.0",
+        },
+    )
+
+    for attempt in range(MAX_ATTEMPTS):
         try:
-            with urlopen(request, timeout=120) as response:
+            with urlopen(
+                request,
+                timeout=REQUEST_TIMEOUT,
+            ) as response:
                 return (
                     response.read(),
                     response.geturl(),
@@ -36,8 +105,12 @@ def fetch(url):
                 )
 
         except HTTPError as exc:
-            if exc.code not in (408, 429, 500, 502, 503, 504):
+            # Chỉ thử lại các lỗi có khả năng tạm thời.
+            if exc.code not in (
+                408, 429, 500, 502, 503, 504
+            ):
                 raise
+
             error = exc
 
         except (
@@ -48,26 +121,27 @@ def fetch(url):
         ) as exc:
             error = exc
 
-        if attempt == 4:
+        if attempt == MAX_ATTEMPTS - 1:
             raise error
 
         delay = 3 * (2 ** attempt)
 
         print(
-            f"RETRY | wait {delay}s | {error}",
+            f"RETRY | attempt={attempt + 1}/{MAX_ATTEMPTS} | "
+            f"wait={delay}s | {error}",
             flush=True,
         )
+
         time.sleep(delay)
 
 
 def validate_file(filename, data, content_type):
-    """Kiểm tra định dạng file trước khi lưu."""
     if not data:
         raise ValueError(f"File rong: {filename}")
 
     suffix = PurePosixPath(filename).suffix.lower()
 
-    if suffix in (".xlsx", ".zip"):
+    if suffix in {".xlsx", ".zip"}:
         if not zipfile.is_zipfile(io.BytesIO(data)):
             raise ValueError(
                 f"Sai dinh dang Excel/ZIP: {filename}"
@@ -86,10 +160,31 @@ def validate_file(filename, data, content_type):
                 f"Sai dinh dang PDF: {filename}"
             )
 
-    elif suffix == ".html":
-        if "html" not in content_type.lower():
+    elif suffix in {".html", ".htm"}:
+        if "html" not in (content_type or "").lower():
             raise ValueError(
-                f"Sai dinh dang HTML: {filename}"
+                f"Sai dinh dang HTML: {filename}; "
+                f"content_type={content_type}"
+            )
+
+
+def validate_content(source, data, content_type, resolved_url):
+    filename = source["filename"]
+
+    validate_file(filename, data, content_type)
+
+    marker = source.get("required_text")
+    suffix = PurePosixPath(filename).suffix.lower()
+
+    if suffix in {".html", ".htm"} and marker:
+        page_text, page_title = read_page_text(data)
+
+        if normalize_text(marker) not in page_text:
+            raise ValueError(
+                f"Khong tim thay {marker!r}; "
+                f"title={page_title!r}; "
+                f"bytes={len(data)}; "
+                f"url={resolved_url}"
             )
 
 
@@ -99,10 +194,9 @@ def find_existing(
     source_id,
     filename,
     url,
+    prefix,
     checksum=None,
-    prefix="knowledge",
 ):
-    """Tìm file đã lưu trong các lần chạy trước."""
     candidates = []
 
     pages = s3.get_paginator("list_objects_v2").paginate(
@@ -118,13 +212,17 @@ def find_existing(
             and item["Size"] > 0
         )
 
-    url_hash = hashlib.sha256(url.encode()).hexdigest()
+    url_hash = hashlib.sha256(
+        url.encode("utf-8")
+    ).hexdigest()
 
-    for item in sorted(
-        candidates,
-        key=lambda value: value["LastModified"],
+    # Ưu tiên file được lưu gần nhất.
+    candidates.sort(
+        key=lambda item: item["LastModified"],
         reverse=True,
-    ):
+    )
+
+    for item in candidates:
         try:
             head = s3.head_object(
                 Bucket=bucket,
@@ -132,9 +230,9 @@ def find_existing(
             )
 
         except ClientError as exc:
-            status = exc.response[
-                "ResponseMetadata"
-            ]["HTTPStatusCode"]
+            status = exc.response.get(
+                "ResponseMetadata", {}
+            ).get("HTTPStatusCode")
 
             if status == 404:
                 continue
@@ -144,16 +242,20 @@ def find_existing(
         metadata = head.get("Metadata", {})
         saved_checksum = metadata.get("sha256", "")
 
-        if not re.fullmatch(r"[0-9a-f]{64}", saved_checksum):
-            continue
-
-        if checksum is not None and saved_checksum != checksum:
-            continue
-
-        if metadata.get("source-url-sha256") not in (
-            None,
-            url_hash,
+        if not re.fullmatch(
+            r"[0-9a-f]{64}",
+            saved_checksum,
         ):
+            continue
+
+        if checksum is not None:
+            if saved_checksum != checksum:
+                continue
+
+        # Tương thích với file cũ chưa có URL hash.
+        saved_url_hash = metadata.get("source-url-sha256")
+
+        if saved_url_hash not in (None, url_hash):
             continue
 
         return {
@@ -168,37 +270,98 @@ def find_existing(
     return None
 
 
-def main():
-    # Đọc catalog nằm trong data_pipeline/config/.
+def load_catalog():
     config_path = (
         Path(__file__).resolve().parents[1]
         / "config"
         / "knowledge_sources.json"
     )
 
+    if not config_path.is_file():
+        raise FileNotFoundError(
+            f"Khong tim thay config: {config_path}"
+        )
+
     catalog = json.loads(
         config_path.read_text(encoding="utf-8-sig")
     )
-    sources = catalog["sources"]
 
-    # Kiểm tra catalog trước khi kết nối hoặc tải dữ liệu.
-    ids = [source["source_id"] for source in sources]
+    sources = catalog.get("sources")
 
-    if not sources or len(ids) != len(set(ids)):
+    if not isinstance(sources, list) or not sources:
         raise ValueError(
-            "Catalog rong hoac trung source_id"
+            "Catalog phai co danh sach sources khong rong"
         )
 
-    allowed_countries = {"JP", "KR", "AU"}
+    required_fields = (
+        "source_id",
+        "country_code",
+        "source_url",
+        "filename",
+    )
+
+    seen_ids = set()
 
     for source in sources:
-        country = source.get("country_code")
-
-        if country not in allowed_countries:
+        if not isinstance(source, dict):
             raise ValueError(
-                f"Nguon {source.get('source_id')} "
-                f"co quoc gia ngoai pham vi: {country}"
+                "Moi source phai la mot JSON object"
             )
+
+        for field in required_fields:
+            value = source.get(field)
+
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(
+                    f"Source thieu hoac sai truong {field}: "
+                    f"{source.get('source_id')}"
+                )
+
+        source_id = source["source_id"]
+
+        if source_id in seen_ids:
+            raise ValueError(
+                f"Trung source_id: {source_id}"
+            )
+
+        seen_ids.add(source_id)
+
+        if source["country_code"] not in ALLOWED_COUNTRIES:
+            raise ValueError(
+                f"Nguon {source_id} ngoai pham vi JP/KR/AU: "
+                f"{source['country_code']}"
+            )
+
+        if not source["source_url"].startswith("https://"):
+            raise ValueError(
+                f"source_url phai dung HTTPS: {source_id}"
+            )
+
+        filename = source["filename"]
+
+        if (
+            "/" in filename
+            or "\\" in filename
+            or filename in {".", ".."}
+        ):
+            raise ValueError(
+                f"filename chi duoc chua ten file: {source_id}"
+            )
+
+        marker = source.get("required_text")
+
+        if marker is not None:
+            if not isinstance(marker, str) or not marker.strip():
+                raise ValueError(
+                    f"required_text khong hop le: {source_id}"
+                )
+
+    return catalog
+
+
+def main():
+    catalog = load_catalog()
+    sources = catalog["sources"]
 
     started_at = datetime.now(timezone.utc)
     date_folder = started_at.strftime("%Y-%m-%d")
@@ -215,19 +378,21 @@ def main():
             s3={"addressing_style": "path"},
         ),
     )
+
     s3.head_bucket(Bucket=bucket)
 
     manifest = {
         "run_id": run_id,
-        "catalog_version": catalog["catalog_version"],
+        "catalog_version": catalog.get("catalog_version"),
         "started_at": started_at.isoformat(),
+        "refresh": refresh,
         "expected_file_count": len(sources),
         "files": [],
         "errors": [],
     }
 
-    stored = 0
-    reused = 0
+    stored_count = 0
+    reused_count = 0
 
     for source in sources:
         source_id = source["source_id"]
@@ -250,10 +415,10 @@ def main():
             existing = find_existing(**cache_args)
 
             if existing and not refresh:
-                # File đã có: dùng lại, không tải từ website.
                 record = dict(existing)
                 record["action"] = "REUSED"
-                reused += 1
+
+                reused_count += 1
 
                 print(
                     f"SKIP DOWNLOAD | {source_id}",
@@ -268,34 +433,24 @@ def main():
 
                 time.sleep(1)
 
-                data, resolved_url, content_type, last_modified = (
-                    fetch(url)
-                )
+                (
+                    data,
+                    resolved_url,
+                    content_type,
+                    last_modified,
+                ) = fetch(url)
 
-                validate_file(
-                    filename,
+                validate_content(
+                    source,
                     data,
                     content_type,
+                    resolved_url,
                 )
-
-                # Kiểm tra nội dung nhận diện của trang HTML.
-                marker = source.get("required_text")
-
-                if filename.endswith(".html") and marker:
-                    html = data.decode(
-                        "utf-8",
-                        errors="replace",
-                    )
-
-                    if marker.casefold() not in html.casefold():
-                        raise ValueError(
-                            "Trang tai ve khong co noi dung "
-                            "nhan dien mong doi"
-                        )
 
                 checksum = hashlib.sha256(data).hexdigest()
 
-                # Khi refresh, tìm cả bản cũ có cùng checksum.
+                # Nếu nội dung thay đổi, tìm cả các bản cũ
+                # để tránh lưu lại nội dung đã từng có.
                 if existing and existing["sha256"] != checksum:
                     existing = find_existing(
                         **cache_args,
@@ -305,7 +460,8 @@ def main():
                 if existing and existing["sha256"] == checksum:
                     record = dict(existing)
                     record["action"] = "REUSED"
-                    reused += 1
+
+                    reused_count += 1
 
                     print(
                         f"UNCHANGED | {source_id}",
@@ -314,8 +470,8 @@ def main():
 
                 else:
                     key = (
-                        f"{prefix}/{source_id}/{date_folder}/"
-                        f"{run_id}/{filename}"
+                        f"{prefix}/{source_id}/"
+                        f"{date_folder}/{run_id}/{filename}"
                     )
 
                     uploaded = s3.put_object(
@@ -326,7 +482,7 @@ def main():
                         Metadata={
                             "sha256": checksum,
                             "source-url-sha256": hashlib.sha256(
-                                url.encode()
+                                url.encode("utf-8")
                             ).hexdigest(),
                         },
                     )
@@ -337,13 +493,11 @@ def main():
                         "size_bytes": len(data),
                         "content_type": content_type,
                         "version_id": uploaded.get("VersionId"),
-                        "stored_at": datetime.now(
-                            timezone.utc
-                        ).isoformat(),
+                        "stored_at": utc_now(),
                         "action": "STORED",
                     }
 
-                    stored += 1
+                    stored_count += 1
 
                     print(
                         f"STORED | {source_id} | "
@@ -354,14 +508,13 @@ def main():
                 record.update({
                     "resolved_url": resolved_url,
                     "last_modified": last_modified,
-                    "retrieved_at": datetime.now(
-                        timezone.utc
-                    ).isoformat(),
+                    "retrieved_at": utc_now(),
                 })
 
-            # Lưu metadata nguồn cùng kết quả thu thập.
             record.update(source)
 
+            # Thu thập thành công chưa đồng nghĩa đã
+            # được kiểm duyệt để đưa vào RAG.
             record.update({
                 "review_status": "PENDING_REVIEW",
                 "published_date": None,
@@ -381,14 +534,17 @@ def main():
                 flush=True,
             )
 
-            # Tiếp tục xử lý các nguồn còn lại.
+            # Một nguồn lỗi không làm dừng các nguồn còn lại.
 
-    errors = manifest["errors"]
+    failed_count = len(manifest["errors"])
 
-    manifest["status"] = "PARTIAL" if errors else "SUCCESS"
-    manifest["completed_at"] = datetime.now(
-        timezone.utc
-    ).isoformat()
+    manifest.update({
+        "status": "PARTIAL" if failed_count else "SUCCESS",
+        "stored_count": stored_count,
+        "reused_count": reused_count,
+        "failed_count": failed_count,
+        "completed_at": utc_now(),
+    })
 
     manifest_key = (
         f"knowledge/_runs/{date_folder}/"
@@ -408,16 +564,18 @@ def main():
 
     print(
         f"\n{manifest['status']} | "
-        f"stored={stored} | "
-        f"reused={reused} | "
-        f"failed={len(errors)}"
+        f"stored={stored_count} | "
+        f"reused={reused_count} | "
+        f"failed={failed_count}",
+        flush=True,
     )
 
     print(
-        f"Manifest: s3://{bucket}/{manifest_key}"
+        f"Manifest: s3://{bucket}/{manifest_key}",
+        flush=True,
     )
 
-    if errors:
+    if failed_count:
         raise SystemExit(1)
 
 
