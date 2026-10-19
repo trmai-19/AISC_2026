@@ -1,0 +1,75 @@
+﻿{
+  "catalog_version": 1,
+  "sources": [
+    {
+      "source_id": "JP_JASSO_PARTTIME",
+      "country_code": "JP",
+      "organization": "JASSO",
+      "title": "Part-Time Work",
+      "language": "en",
+      "source_url": "https://www.studyinjapan.go.jp/en/work-in-japan/part-time-jobs/",
+      "filename": "parttime.html",
+      "required_text": "Part-Time Work"
+    },
+    {
+      "source_id": "JP_JASSO_HOUSING",
+      "country_code": "JP",
+      "organization": "JASSO",
+      "title": "Accommodation",
+      "language": "en",
+      "source_url": "https://www.studyinjapan.go.jp/en/life/accomodation/",
+      "filename": "accommodation.html",
+      "required_text": "Accommodation"
+    },
+    {
+      "source_id": "JP_JASSO_INSURANCE",
+      "country_code": "JP",
+      "organization": "JASSO",
+      "title": "Insurance",
+      "language": "en",
+      "source_url": "https://www.studyinjapan.go.jp/en/life/insurance/",
+      "filename": "insurance.html",
+      "required_text": "National Health Insurance"
+    },
+    {
+      "source_id": "KR_NIIED_LIVING",
+      "country_code": "KR",
+      "organization": "NIIED",
+      "title": "Living and Housing Information",
+      "language": "en",
+      "source_url": "https://www.studyinkorea.go.kr/en/life/livingAndHousing.do",
+      "filename": "living_and_housing.html",
+      "required_text": "Living and Housing"
+    },
+    {
+      "source_id": "KR_NHIS_FOREIGNERS",
+      "country_code": "KR",
+      "organization": "National Health Insurance Service",
+      "title": "Guidance for Foreigners",
+      "language": "en",
+      "source_url": "https://www.nhis.or.kr/english/wbheaa02900m01.do",
+      "filename": "health_insurance_foreigners.html",
+      "required_text": "Guidance for foreigners"
+    },
+    {
+      "source_id": "AU_STUDYAU_VISA",
+      "country_code": "AU",
+      "organization": "Austrade - Study Australia",
+      "title": "Student Visa Subclass 500",
+      "language": "en",
+      "source_url": "https://www.studyaustralia.gov.au/en/plan-your-move/your-guide-to-visas/student-visa-subclass-500",
+      "filename": "student_visa.html",
+      "required_text": "Student visa"
+    },
+    {
+      "source_id": "AU_STUDYAU_WORK",
+      "country_code": "AU",
+      "organization": "Austrade - Study Australia",
+      "title": "Work in Australia",
+      "language": "en",
+      "source_url": "https://www.studyaustralia.gov.au/en/work-in-australia",
+      "filename": "work_in_australia.html",
+      "required_text": "Work in Australia"
+    }
+  ]
+}
