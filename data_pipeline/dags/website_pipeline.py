@@ -52,11 +52,17 @@ def website_pipeline():
         run_module(
             "transforms.prepare_rag"
         )
+    @task(do_xcom_push=False)
+    def update_rag_embeddings():
+        run_module(
+            "transforms.embed_rag"
+        )
 
     website = update_website_data()
     rag = prepare_rag_corpus()
+    embeddings = update_rag_embeddings()
 
-    website >> rag
+    website >> rag >> embeddings
 
 
 website_pipeline()
