@@ -266,3 +266,125 @@ def external_overview_dashboard(country: str = "DK"):
             status_code=503,
             detail="External dashboard database is unavailable",
         ) from None
+
+@router.get("/destinations")
+def destination_dashboard(country: str = "DE"):
+    configs = {
+        "DE": {
+            "name": "Germany",
+            "left_title": "Dissatisfaction at the Start of Studies",
+            "right_title": "Poor Everyday Experiences: EU vs Non-EU",
+            "note": (
+                "DAAD BintHo 2023/24, international degree-seeking "
+                "students. Left: rather/completely dissatisfied. "
+                "Right: rather/very poor. SeSaBa data is not loaded."
+            ),
+        },
+        "AU": {
+            "name": "Australia",
+            "left_title": "Positive Ratings of Living Experiences",
+            "right_title": (
+                "Vietnamese Students vs All International Students"
+            ),
+            "note": (
+                "Charts: QILT 2025, international undergraduates, "
+                "all provider types. Vietnamese students are included "
+                "in the total. The first three cards use a separate "
+                "Study Australia survey."
+            ),
+        },
+        "JP": {
+            "name": "Japan",
+            "left_title": "Difficulties After Arrival",
+            "right_title": "Reported Difficulties: 2019 vs 2023",
+            "note": (
+                "JASSO, self-financed international students. "
+                "Up to three responses; percentages need not sum "
+                "to 100%. The 2023 denominator is 7,867. Different "
+                "survey years represent separate samples."
+            ),
+        },
+    }
+
+    country = country.strip().upper()
+
+    if country not in configs:
+        raise HTTPException(
+            status_code=404,
+            detail="Destination not available",
+        )
+
+    try:
+        with engine.connect().execution_options(
+            isolation_level="REPEATABLE READ"
+        ) as conn:
+            with conn.begin():
+                conn.execute(text("SET TRANSACTION READ ONLY"))
+
+                params = {"country": country}
+
+                cards = [
+                    dict(row)
+                    for row in conn.execute(
+                        text("""
+                            SELECT *
+                            FROM mart.destination_cards
+                            WHERE host_country_code = :country
+                            ORDER BY slot
+                        """),
+                        params,
+                    ).mappings().all()
+                ]
+
+                charts = [
+                    dict(row)
+                    for row in conn.execute(
+                        text("""
+                            SELECT *
+                            FROM mart.destination_charts
+                            WHERE host_country_code = :country
+                            ORDER BY
+                                panel,
+                                sort_order,
+                                indicator_code,
+                                group_label
+                        """),
+                        params,
+                    ).mappings().all()
+                ]
+
+                if len(cards) != 4 or not charts:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Destination marts are not ready",
+                    )
+
+                return {
+                    "country_code": country,
+                    "data_as_of": max(
+                        row["prepared_at"] for row in cards
+                    ),
+                    "run_ids": sorted({
+                        row["run_id"] for row in cards
+                    }),
+                    "data": {
+                        "config": configs[country],
+                        "countries": [
+                            {
+                                "host_country_code": code,
+                                "destination_label": config["name"],
+                            }
+                            for code, config in configs.items()
+                        ],
+                        "cards": cards,
+                        "charts": charts,
+                    },
+                }
+
+    except SQLAlchemyError:
+        logger.exception("Failed to read destination marts")
+
+        raise HTTPException(
+            status_code=503,
+            detail="Destination database is unavailable",
+        ) from None
