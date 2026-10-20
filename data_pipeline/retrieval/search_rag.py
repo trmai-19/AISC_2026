@@ -62,35 +62,55 @@ def search_rag(query, country, limit=3, source_kind=None):
 
         rows = conn.execute(
             """
+            WITH candidates AS (
+                SELECT
+                    c.chunk_id,
+                    c.document_id,
+                    c.country_code,
+                    c.source_kind,
+                    c.source_ref,
+                    c.title,
+                    c.content,
+                    COALESCE(
+                        c.metadata->>'resolved_url',
+                        c.metadata->>'source_url'
+                    ) AS source_url,
+                    e.embedding <=> %s::vector AS distance,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY c.content_hash
+                        ORDER BY
+                            CASE
+                                WHEN c.source_kind = 'EXTERNAL' THEN 0
+                                ELSE 1
+                            END,
+                            c.document_id,
+                            c.chunk_id
+                    ) AS duplicate_rank
+                FROM knowledge.current_rag_chunks c
+                JOIN knowledge.rag_embeddings e
+                  ON e.chunk_id = c.chunk_id
+                 AND e.content_hash = c.content_hash
+                WHERE c.country_code = %s
+                  AND e.profile_id = %s
+                  AND (
+                      %s::text IS NULL
+                      OR c.source_kind = %s
+                  )
+            )
             SELECT
-                c.chunk_id,
-                c.document_id,
-                c.country_code,
-                c.source_kind,
-                c.source_ref,
-                c.title,
-                c.content,
-                COALESCE(
-                    c.metadata->>'resolved_url',
-                    c.metadata->>'source_url'
-                ) AS source_url,
-                1 - (
-                    e.embedding <=> %s::vector
-                ) AS similarity
-            FROM knowledge.current_rag_chunks c
-            JOIN knowledge.rag_embeddings e
-              ON e.chunk_id = c.chunk_id
-             AND e.content_hash = c.content_hash
-            WHERE c.country_code = %s
-              AND e.profile_id = %s
-              AND (
-                  %s::text IS NULL
-                  OR c.source_kind = %s
-              )
-            ORDER BY
-                e.embedding <=> %s::vector,
-                c.chunk_id
-            LIMIT %s
+                chunk_id,
+                document_id,
+                country_code,
+                source_kind,
+                source_ref,
+                title,
+                content,
+                source_url,
+                1 - distance AS similarity
+            FROM candidates
+            WHERE duplicate_rank = 1
+            ORDER BY distance, chunk_id
+            LIMIT %s;
             """,
             (
                 vector,
@@ -98,7 +118,6 @@ def search_rag(query, country, limit=3, source_kind=None):
                 profile_id,
                 source_kind,
                 source_kind,
-                vector,
                 limit,
             ),
         ).fetchall()
