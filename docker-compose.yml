@@ -37,6 +37,7 @@ services:
       - CORS_ORIGINS=["*"]
       - EMBEDDING_MODEL=bge-m3
       - CONFIDENCE_THRESHOLD=0.70
+      - ANALYTICS_DATABASE_URL=postgresql+psycopg2://aisc_data:aisc_data_local_2026@postgres_transformed:5432/aisc_data
     volumes:
       # Ánh xạ thư mục mã nguồn để kích hoạt tính năng Hot-Reload khi sửa code
       - ./src/backend:/app
