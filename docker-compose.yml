@@ -159,8 +159,37 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+
+  embedding:
+    build:
+      context: ./data_pipeline/embedding_service
+
+    container_name: aisc_embedding
+    restart: unless-stopped
+
+    environment:
+      HF_HUB_DISABLE_XET: "1"
+      TORCH_NUM_THREADS: "2"
+
+    ports:
+      - "127.0.0.1:8001:8000"
+
+    volumes:
+      - embedding_cache:/models
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10m
 volumes:
   pgdata:
   minio_data:
   pgdata_transformed:
   airflow_home:
+  embedding_cache:
