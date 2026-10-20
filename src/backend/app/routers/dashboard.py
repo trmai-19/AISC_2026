@@ -167,3 +167,102 @@ def product_usage_dashboard():
             LIMIT 20
         """,
     })
+
+@router.get("/external-overview")
+def external_overview_dashboard(country: str = "DK"):
+    country = country.strip().upper()
+
+    try:
+        with engine.connect().execution_options(
+            isolation_level="REPEATABLE READ"
+        ) as conn:
+            with conn.begin():
+                conn.execute(text("SET TRANSACTION READ ONLY"))
+
+                meta = conn.execute(
+                    text("""
+                        SELECT
+                            run_id,
+                            transformed_at AS data_as_of
+                        FROM pipeline_ops.eurostudent_support_runs
+                        ORDER BY transformed_at DESC, run_id DESC
+                        LIMIT 1
+                    """)
+                ).mappings().first()
+
+                if meta is None:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="External overview data is not ready",
+                    )
+
+                def read_rows(query, params=None):
+                    rows = conn.execute(
+                        text(query),
+                        params or {},
+                    ).mappings().all()
+
+                    return [dict(row) for row in rows]
+
+                countries = read_rows("""
+                    SELECT *
+                    FROM mart.external_overview_countries
+                    ORDER BY country_name
+                """)
+
+                allowed = {
+                    row["country_code"]
+                    for row in countries
+                }
+
+                if country not in allowed:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Country is not available in this dataset",
+                    )
+
+                params = {"country": country}
+
+                cards = read_rows("""
+                    SELECT *
+                    FROM mart.external_overview_cards
+                    WHERE country_code = :country
+                    ORDER BY slot
+                """, params)
+
+                services = read_rows("""
+                    SELECT *
+                    FROM mart.external_overview_services
+                    WHERE country_code = :country
+                    ORDER BY service_code, state_code
+                """, params)
+
+                benchmarks = read_rows("""
+                    SELECT *
+                    FROM mart.external_overview_benchmarks
+                    WHERE country_code = :country
+                    ORDER BY sort_order
+                """, params)
+
+                return {
+                    "run_id": meta["run_id"],
+                    "data_as_of": meta["data_as_of"],
+                    "country_code": country,
+                    "source": "EUROSTUDENT 8",
+                    "population": "All students",
+                    "unit": "%",
+                    "data": {
+                        "countries": countries,
+                        "cards": cards,
+                        "services": services,
+                        "benchmarks": benchmarks,
+                    },
+                }
+
+    except SQLAlchemyError:
+        logger.exception("Failed to read external overview marts")
+
+        raise HTTPException(
+            status_code=503,
+            detail="External dashboard database is unavailable",
+        ) from None
