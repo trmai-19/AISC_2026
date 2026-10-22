@@ -22,7 +22,7 @@ COUNTRY_MAP = {"JP": "Nhật Bản", "KR": "Hàn Quốc", "AU": "Australia"}
 class EvidenceService:
     @staticmethod
     def get_domains() -> List[DomainResponse]:
-        return DOMAINS
+        return [DomainResponse(**d) for d in DOMAINS]
 
     @staticmethod
     def list_cards(

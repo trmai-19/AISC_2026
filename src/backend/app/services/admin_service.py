@@ -35,8 +35,8 @@ class AdminService:
         for item in items:
             country_code = str(item.country_code or "JP")
             domain_id = str(item.domain_id or "phap_ly")
-            country_name = str(COUNTRY_MAP.get(country_code, country_code))
-            domain_name = str(DOMAIN_MAP.get(domain_id, domain_id))
+            country_name = COUNTRY_MAP.get(country_code, country_code)
+            domain_name = DOMAIN_MAP.get(domain_id, domain_id)
 
             result.append(
                 AdminQueueItemResponse(
