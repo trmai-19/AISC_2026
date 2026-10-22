@@ -9,6 +9,7 @@ from app.routers import (
     survey_router,
     admin_router
 )
+from app.routers.dashboard import router as dashboard_router
 
 # Cấu hình logging
 logging.basicConfig(
@@ -46,6 +47,7 @@ app.include_router(chat_router, prefix="/api/v1")
 app.include_router(evidence_router, prefix="/api/v1")
 app.include_router(survey_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
+app.include_router(dashboard_router, prefix="/api/v1")
 
 @app.get("/", tags=["Health Check"])
 def root_endpoint():

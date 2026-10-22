@@ -1,0 +1,38 @@
+﻿{
+    "catalog_version":  3,
+    "sources":  [
+                    {
+                        "source_id":  "JP_JNTO_MANNERS",
+                        "country_code":  "JP",
+                        "organization":  "Japan National Tourism Organization",
+                        "title":  "Hiểu Và Thành Thạo Cách Ứng Xử Và Phép Tắc Xã Giao Của Người Nhật",
+                        "language":  "vi",
+                        "source_category":  "culture",
+                        "source_url":  "https://www.japan.travel/vi/guide/understanding-and-mastering-japanese-manners-and-etiquette/",
+                        "filename":  "japanese_manners.html",
+                        "required_text":  "Hiểu Và Thành Thạo Cách Ứng Xử Và Phép Tắc Xã Giao Của Người Nhật"
+                    },
+                    {
+                        "source_id":  "KR_ATLAS_ETIQUETTE",
+                        "country_code":  "KR",
+                        "organization":  "Cultural Atlas - Mosaica",
+                        "title":  "South Korean Etiquette",
+                        "language":  "en",
+                        "source_category":  "culture",
+                        "source_url":  "https://theculturalatlas.org/south-korean-culture/south-korean-culture-etiquette",
+                        "filename":  "korean_etiquette.html",
+                        "required_text":  "Basic Etiquette"
+                    },
+                    {
+                        "source_id":  "AU_ATLAS_ETIQUETTE",
+                        "country_code":  "AU",
+                        "organization":  "Cultural Atlas - Mosaica",
+                        "title":  "Australian Etiquette",
+                        "language":  "en",
+                        "source_category":  "culture",
+                        "source_url":  "https://theculturalatlas.org/australian-culture/australian-culture-etiquette",
+                        "filename":  "australian_etiquette.html",
+                        "required_text":  "Punctuality"
+                    }
+                ]
+}
