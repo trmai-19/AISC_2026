@@ -746,7 +746,7 @@ function renderEvidenceCards(cards = currentLoadedCards) {
           </div>
           <div class="badge-reliability">
             <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            ${card.reliabilityScore}%
+            ${card.sourceType && card.sourceType.includes('chính thống') ? 'Chính thống' : 'Cộng đồng'}
           </div>
         </div>
 
@@ -764,7 +764,7 @@ function renderEvidenceCards(cards = currentLoadedCards) {
       <div class="card-footer">
         <div>
           <span style="display: block; font-weight: 600; color: var(--text-primary); font-size: 0.75rem;">${escapeHtml(card.organization)}</span>
-          <span style="font-size: 0.7rem;">Xác minh: ${card.verifiedDate}</span>
+          <span style="font-size: 0.7rem;">Cập nhật: ${card.verifiedDate}</span>
         </div>
         <button class="btn-card-action" onclick="openEvidenceDetailModal('${card.id}')">
           Xem chi tiết
@@ -797,29 +797,31 @@ function openEvidenceDetailModal(cardId) {
   badges.innerHTML = `
     <span class="badge-country">${card.countryName}</span>
     <span class="badge-domain">${card.domainName}</span>
-    <span class="confidence-chip confidence-high">Mã: ${card.id} • Độ tin cậy: ${card.reliabilityScore}%</span>
+    <span class="confidence-chip confidence-high">${escapeHtml(card.confidenceLevel || 'Nguồn kiểm chuẩn')}</span>
   `;
 
   // Clean HTML with high contrast in Light Mode (no hardcoded #fff)
   body.innerHTML = `
     <div class="card-context-box">
-      <strong>Bối cảnh áp dụng:</strong> ${escapeHtml(card.context)}
+      <strong>Tài liệu / Bối cảnh:</strong> ${escapeHtml(card.context)}
     </div>
 
     <div>
-      <h4 style="color: var(--accent-primary); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.35rem; font-weight: 700;">Nội dung đã kiểm chứng (Verified Facts)</h4>
-      <p style="font-size: 0.9rem; line-height: 1.55; color: var(--text-primary);">${escapeHtml(card.verifiedContent)}</p>
+      <h4 style="color: var(--accent-primary); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.35rem; font-weight: 700;">Nội dung trích đoạn kiểm chứng</h4>
+      <p style="font-size: 0.9rem; line-height: 1.6; color: var(--text-primary); white-space: pre-line;">${escapeHtml(card.verifiedContent)}</p>
     </div>
 
+    ${card.safeAction ? `
     <div class="rag-section-block block-safe">
       <h4 style="margin-bottom: 0.3rem;">Hành vi ứng xử an toàn (Recommended Action):</h4>
       <p style="font-size: 0.85rem;">${escapeHtml(card.safeAction)}</p>
-    </div>
+    </div>` : ''}
 
+    ${card.donots ? `
     <div class="rag-section-block block-donot">
       <h4 style="margin-bottom: 0.3rem;">Điều tuyệt đối cần tránh (Don'ts):</h4>
       <p style="font-size: 0.85rem;">${escapeHtml(card.donots)}</p>
-    </div>
+    </div>` : ''}
 
     <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.85rem; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
       <div>
