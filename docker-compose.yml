@@ -35,14 +35,20 @@ services:
       - APP_PORT=8000
       - APP_HOST=0.0.0.0
       - CORS_ORIGINS=["*"]
-      - EMBEDDING_MODEL=bge-m3
-      - CONFIDENCE_THRESHOLD=0.70
+      - EMBEDDING_MODEL=multilingual-e5-small
+      - CONFIDENCE_THRESHOLD=0.80
       - ANALYTICS_DATABASE_URL=postgresql+psycopg2://aisc_data:aisc_data_local_2026@postgres_transformed:5432/aisc_data
+      - TRANSFORMED_DATABASE_URL=postgresql+psycopg2://aisc_data:aisc_data_local_2026@postgres_transformed:5432/aisc_data
+      - EMBEDDING_SERVICE_URL=http://embedding:8000
     volumes:
       # Ánh xạ thư mục mã nguồn để kích hoạt tính năng Hot-Reload khi sửa code
       - ./src/backend:/app
     depends_on:
       postgres:
+        condition: service_healthy
+      postgres_transformed:
+        condition: service_healthy
+      embedding:
         condition: service_healthy
 
   # 3. WEB FRONTEND NGINX (WEB UI CỤC BỘ)

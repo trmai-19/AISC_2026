@@ -31,6 +31,8 @@ class EvidenceCardResponse(BaseModel):
     confidence_level: Optional[str] = None
     status: str
     verified_date: Optional[date] = None
+    source_url: Optional[str] = None
+    organization_name: Optional[str] = None
     source: Optional[KnowledgeSourceResponse] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -8,9 +8,28 @@ from app.repositories.audit_repository import AuditRepository
 from app.models.knowledge import EvidenceCard
 from app.schemas.admin_schema import AdminQueueItemResponse, QueueActionRequest
 from app.schemas.evidence_schema import KnowledgeSourceResponse
-from app.services.rag_service import generate_query_vector
+import hashlib
+import math
+import re
 
 COUNTRY_MAP = {"JP": "Nhật Bản", "KR": "Hàn Quốc", "AU": "Australia"}
+
+def generate_legacy_768_vector(text_content: str, country: str = "") -> List[float]:
+    """Tạo vector 768 chiều tương thích bảng legacy evidence_vectors"""
+    dim = 768
+    vec = [0.0] * dim
+    clean_text = text_content.lower().strip()
+    if not clean_text:
+        return vec
+    tokens = re.findall(r'\w+', clean_text)
+    char_trigrams = [clean_text[i:i+3] for i in range(max(0, len(clean_text) - 2))]
+    for feat in tokens + char_trigrams:
+        h = int(hashlib.md5(feat.encode('utf-8')).hexdigest(), 16)
+        bucket = h % dim
+        sign = 1.0 if ((h >> 16) & 1) == 0 else -1.0
+        vec[bucket] += sign
+    norm = math.sqrt(sum(x * x for x in vec))
+    return [float(x / norm) for x in vec] if norm > 0 else vec
 DOMAIN_MAP = {
     "phap_ly": "Hành chính – Pháp lý",
     "cong_viec": "Học tập – Công việc",
@@ -106,7 +125,7 @@ class AdminService:
             EvidenceRepository.create_card(db, new_card)
 
             # Tự động sinh vector và nạp vào evidence_vectors
-            vec = generate_query_vector(item.exp_title + " " + item.exp_text, item.country_code)
+            vec = generate_legacy_768_vector(item.exp_title + " " + item.exp_text, item.country_code)
             EvidenceRepository.save_vector(db, new_card_id, vec, model="bge-m3")
 
         return {

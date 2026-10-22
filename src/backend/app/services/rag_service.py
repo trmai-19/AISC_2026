@@ -1,11 +1,11 @@
 import logging
-import hashlib
-import math
 import re
 from typing import List, Dict, Any, Optional
+import httpx
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from app.config import settings
-from app.repositories.evidence_repository import EvidenceRepository
+from app.schemas.evidence_schema import EvidenceCardResponse, KnowledgeSourceResponse
 from app.services.llm_service import generate_structured_response
 
 logger = logging.getLogger(__name__)
@@ -28,64 +28,19 @@ COUNTRY_MAP = {
     "AU": "Australia"
 }
 
-# =====================================================================
-# HÀM CHUNKING VỚI OVERLAP (KẾ THỪA TỪ TÀI LIỆU AI VIET NAM AIO 2026)
-# =====================================================================
-def chunk_text(text_content: str, size: int = 1000, overlap: int = 200) -> List[str]:
-    """
-    Cắt nhỏ văn bản thành các đoạn (chunks) có độ dài tối đa 'size' ký tự,
-    với 'overlap' ký tự trùng lặp giữa 2 đoạn liên tiếp để bảo toàn ngữ cảnh.
-    """
-    if not text_content:
-        return []
-    paras = [p.strip() for p in text_content.split("\n") if p.strip()]
-    chunks, cur = [], ""
-    for p in paras:
-        while len(p) > size:
-            if cur:
-                chunks.append(cur.strip())
-            cur = ""
-            chunks.append(p[:size].strip())
-            p = p[size - overlap:]
-        if len(cur) + len(p) + 1 <= size:
-            cur += p + "\n"
-        else:
-            if cur:
-                chunks.append(cur.strip())
-            cur = (cur[-overlap:] + p + "\n") if overlap else (p + "\n")
-    if cur.strip():
-        chunks.append(cur.strip())
-    return chunks
+_transformed_engine = None
 
-# =====================================================================
-# SINH VECTOR TƯƠNG ĐỒNG BẰNG HASHING VECTORIZER (768 DIMENSIONS)
-# =====================================================================
-def generate_query_vector(text_content: str, country: str = "") -> List[float]:
-    """
-    Tạo vector 768 chiều chuẩn hóa L2 (L2-Normalized Dense Vector) dựa trên 
-    Feature Hashing của từ và character n-grams.
-    - Đảm bảo tính nhất quán toán học 100% không phụ thuộc network/API ngoài.
-    - Chống lỗi gõ phím/chính tả nhờ character trigram buckets.
-    - Tương thích hoàn toàn với chỉ mục HNSW trên pgvector.
-    """
-    dim = 768
-    vec = [0.0] * dim
-    clean_text = text_content.lower().strip()
-    if not clean_text:
-        return vec
+def get_transformed_engine():
+    global _transformed_engine
+    if _transformed_engine is None:
+        _transformed_engine = create_engine(
+            settings.TRANSFORMED_DATABASE_URL,
+            pool_pre_ping=True,
+            pool_size=5,
+            max_overflow=5
+        )
+    return _transformed_engine
 
-    tokens = re.findall(r'\w+', clean_text)
-    char_trigrams = [clean_text[i:i+3] for i in range(max(0, len(clean_text) - 2))]
-    all_features = tokens + char_trigrams
-
-    for feat in all_features:
-        h = int(hashlib.md5(feat.encode('utf-8')).hexdigest(), 16)
-        bucket = h % dim
-        sign = 1.0 if ((h >> 16) & 1) == 0 else -1.0
-        vec[bucket] += sign
-
-    norm = math.sqrt(sum(x * x for x in vec))
-    return [float(x / norm) for x in vec] if norm > 0 else vec
 
 # =====================================================================
 # BỘ LỌC Ý ĐỊNH HỘI THOẠI CƠ BẢN (CONVERSATIONAL GUARDRAIL & GREETINGS)
@@ -115,7 +70,7 @@ def detect_conversational_intent(query: str, country: str = "JP") -> Optional[Di
             "response_type": "GREETING",
             "direct_message": (
                 f"Xin chào bạn! Tôi là DCI Copilot – Trợ lý hỗ trợ thích nghi văn hóa số tại {country_name}. "
-                "Tôi có thể giúp bạn giải đáp các tình huống ứng xử, giao tiếp, nhà ở, việc làm hoặc thủ tục thực tế. "
+                "Tôi có thể giúp bạn giải đáp các tình huống ứng xử, giao tiếp, nhà ở, việc làm hoặc quy chuẩn thực tế. "
                 "Hôm nay bạn cần hỗ trợ về chủ đề gì?"
             )
         }
@@ -129,7 +84,7 @@ def detect_conversational_intent(query: str, country: str = "JP") -> Optional[Di
             "direct_message": (
                 "Tôi là DCI Copilot, trợ lý số thuộc đề án 'Phiên Dịch Văn Hóa Số' (Asteria - AISC'26). "
                 "Nhiệm vụ của tôi là hỗ trợ người Việt Nam hòa nhập an toàn tại Nhật Bản, Hàn Quốc và Australia. "
-                "Tôi có thể giúp bạn giải đáp các quy chuẩn văn hóa, cách xử lý tình huống phát sinh và các quy định pháp lý – hành chính đã được đối soát chính thống."
+                "Tôi có thể giúp bạn giải đáp các quy chuẩn văn hóa, cách xử lý tình huống phát sinh và các kinh nghiệm thực tế đã được đối soát chính thống."
             )
         }
 
@@ -158,6 +113,131 @@ def detect_conversational_intent(query: str, country: str = "JP") -> Optional[Di
 
     return None
 
+
+# =====================================================================
+# HÀM TRUY VẤN KHO RAG POSTGRESQL TRANSFORMED (MULTILINGUAL-E5-SMALL)
+# =====================================================================
+async def search_rag_knowledge(
+    query: str,
+    country: str,
+    limit: int = 3,
+    source_kind: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Truy vấn kho RAG mới (multilingual-e5-small, 384 dimensions):
+    1. Gọi Embedding Service lấy vector và profile_id
+    2. Truy vấn view knowledge.current_rag_chunks kết hợp knowledge.rag_embeddings
+    3. Lọc country_code, loại trùng theo content_hash, ưu tiên EXTERNAL
+    """
+    query_clean = query.strip()
+    country_code = country.strip().upper()
+
+    if country_code not in {"JP", "KR", "AU"}:
+        raise ValueError("Quốc gia chỉ hỗ trợ JP, KR hoặc AU")
+
+    # 1. Gọi dịch vụ sinh vector (E5 small 384 chiều)
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.post(
+            f"{settings.EMBEDDING_SERVICE_URL}/embed",
+            json={"texts": [query_clean], "kind": "query"}
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"Embedding service trả về mã lỗi {resp.status_code}: {resp.text}")
+        embed_data = resp.json()
+
+    if embed_data.get("dimension") != 384 or not embed_data.get("vectors") or not embed_data.get("profile_id"):
+        raise ValueError("Phản hồi embedding không hợp lệ")
+
+    vector = embed_data["vectors"][0]
+    profile_id = embed_data["profile_id"]
+    vec_literal = "[" + ",".join(str(float(x)) for x in vector) + "]"
+
+    # 2. Truy vấn database aisc_data
+    engine = get_transformed_engine()
+    sql = text("""
+        WITH candidates AS (
+            SELECT
+                c.chunk_id,
+                c.document_id,
+                c.country_code,
+                c.source_kind,
+                c.source_ref,
+                c.title,
+                c.content,
+                COALESCE(
+                    c.metadata->>'resolved_url',
+                    c.metadata->>'source_url'
+                ) AS source_url,
+                e.embedding <=> cast(:vector as vector) AS distance,
+                ROW_NUMBER() OVER (
+                    PARTITION BY c.content_hash
+                    ORDER BY
+                        CASE
+                            WHEN c.source_kind = 'EXTERNAL' THEN 0
+                            ELSE 1
+                        END,
+                        c.document_id,
+                        c.chunk_id
+                ) AS duplicate_rank
+            FROM knowledge.current_rag_chunks c
+            JOIN knowledge.rag_embeddings e
+              ON e.chunk_id = c.chunk_id
+             AND e.content_hash = c.content_hash
+            WHERE c.country_code = :country
+              AND e.profile_id = :profile_id
+              AND (:source_kind IS NULL OR c.source_kind = :source_kind)
+        )
+        SELECT
+            chunk_id,
+            document_id,
+            country_code,
+            source_kind,
+            source_ref,
+            title,
+            content,
+            source_url,
+            1 - distance AS similarity
+        FROM candidates
+        WHERE duplicate_rank = 1
+        ORDER BY distance, chunk_id
+        LIMIT :limit;
+    """)
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            sql,
+            {
+                "vector": vec_literal,
+                "country": country_code,
+                "profile_id": profile_id,
+                "source_kind": source_kind,
+                "limit": limit
+            }
+        ).fetchall()
+
+    matches = [
+        {
+            "chunk_id": r.chunk_id,
+            "document_id": r.document_id,
+            "country_code": r.country_code,
+            "source_kind": r.source_kind,
+            "source_ref": r.source_ref,
+            "title": r.title,
+            "content": r.content,
+            "source_url": r.source_url,
+            "similarity": float(r.similarity)
+        }
+        for r in rows
+    ]
+
+    return {
+        "query": query_clean,
+        "country_code": country_code,
+        "profile_id": profile_id,
+        "matches": matches
+    }
+
+
 # =====================================================================
 # QUY TRÌNH DYNAMIC HYBRID RAG TRÊN POSTGRESQL (PRODUCTION GRADE)
 # =====================================================================
@@ -169,12 +249,13 @@ async def execute_rag_pipeline(
     stage: str = "PREPARING"
 ) -> Dict[str, Any]:
     """
-    Thực thi quy trình RAG động không hardcode:
+    Thực thi quy trình RAG chuẩn mực:
     1. Kiểm tra Guardrail hội thoại cơ bản (chào hỏi, cảm ơn, danh tính)
-    2. Dynamic Hybrid Search qua EvidenceRepository (Vector + Trigram + Full-text)
-    3. Ngưỡng tin cậy toán học (CONFIDENCE_THRESHOLD):
-       Tự động từ chối nếu không thuộc phạm vi thông tin quy chuẩn của hệ thống.
-    4. Gọi LLM định dạng câu trả lời cấu trúc 4 phần dựa trên Evidence Card.
+    2. Kiểm tra bộ lọc quốc gia nghiêm ngặt (JP, KR, AU)
+    3. Truy vấn kho RAG mới (multilingual-e5-small + pgvector trên aisc_data)
+    4. Kiểm soát ngưỡng tin cậy (CONFIDENCE_THRESHOLD):
+       Tự động từ chối nếu không đủ bằng chứng đối soát trong hệ thống.
+    5. Gọi LLM sinh câu trả lời có trích dẫn nguồn rõ ràng.
     """
     clean_query = query.strip()
     if not clean_query:
@@ -184,35 +265,37 @@ async def execute_rag_pipeline(
             "refusal_message": "Vui lòng nhập câu hỏi để hệ thống hỗ trợ bạn."
         }
 
+    # Chuẩn hóa quốc gia (mặc định JP nếu không hợp lệ)
+    norm_country = country.strip().upper() if country else "JP"
+    if norm_country not in {"JP", "KR", "AU"}:
+        norm_country = "JP"
+    country_name = COUNTRY_MAP.get(norm_country, "nước sở tại")
+
     # 1. Kiểm tra ý định hội thoại cơ bản (Chào hỏi / Cảm ơn / Danh tính)
-    smalltalk_response = detect_conversational_intent(clean_query, country)
+    smalltalk_response = detect_conversational_intent(clean_query, norm_country)
     if smalltalk_response:
         return smalltalk_response
 
-    # 2. Sinh vector biểu diễn câu hỏi
-    query_vec = generate_query_vector(clean_query, country)
+    # 2. Truy vấn kho RAG
+    try:
+        rag_search_result = await search_rag_knowledge(
+            query=clean_query,
+            country=norm_country,
+            limit=3
+        )
+        matches = rag_search_result.get("matches", [])
+    except Exception as e:
+        logger.error(f"Lỗi khi truy vấn RAG Knowledge: {e}")
+        matches = []
 
-    # 3. Truy vấn Hybrid Search qua Repository
-    search_results = EvidenceRepository.search_hybrid(
-        db=db,
-        query=clean_query,
-        country=country,
-        query_vector=query_vec,
-        limit=1
-    )
+    # 3. Kiểm soát ngưỡng an toàn toán học (Chống suy diễn ảo giác)
+    best_match = matches[0] if matches else None
+    similarity_score = best_match["similarity"] if best_match else 0.0
 
-    # 4. Kiểm soát ngưỡng an toàn toán học (Chống suy diễn ảo giác)
-    matched_card = None
-    similarity_score = 0.0
-
-    if search_results:
-        matched_card, similarity_score = search_results[0]
-
-    # Nếu không có thẻ hoặc điểm tương đồng thấp hơn ngưỡng cho phép -> Báo ngoài phạm vi cung cấp
-    if not matched_card or similarity_score < settings.CONFIDENCE_THRESHOLD:
-        country_name = COUNTRY_MAP.get(country, "nước sở tại")
+    # Nếu không có bằng chứng hoặc độ tương đồng thấp hơn ngưỡng cho phép -> Báo ngoài phạm vi
+    if not best_match or similarity_score < settings.CONFIDENCE_THRESHOLD:
         logger.info(
-            f"RAG Refusal triggered: query='{clean_query}', country='{country}', "
+            f"RAG Refusal triggered: query='{clean_query}', country='{norm_country}', "
             f"best_score={similarity_score:.4f}, threshold={settings.CONFIDENCE_THRESHOLD}"
         )
         return {
@@ -220,36 +303,58 @@ async def execute_rag_pipeline(
             "response_type": "OUT_OF_SCOPE",
             "refusal_message": (
                 f"Câu trả lời cho vấn đề này hiện không thuộc phạm vi thông tin và quy chuẩn văn hóa mà hệ thống DCI cung cấp tại {country_name}. "
-                "Bạn có thể đặt câu hỏi về các chủ đề văn hóa ứng xử, giao tiếp, nhà ở, lao động hoặc thủ tục đời sống (Ví dụ: quy chuẩn làm thêm baito, phân loại rác, văn hóa tiền tip, v.v.) để tôi hỗ trợ bạn tốt nhất nhé!"
+                "Bạn có thể đặt câu hỏi về các chủ đề văn hóa ứng xử, giao tiếp, nhà ở, lao động hoặc phép lịch sự thường ngày (Ví dụ: quy chuẩn cúi chào, xưng hô, ăn uống cùng người lớn tuổi, văn hóa tiền tip, v.v.) để tôi hỗ trợ bạn tốt nhất nhé!"
             )
         }
 
-    # 4. Chuẩn bị thông tin nguồn đối soát chính thống
-    org_name = matched_card.source.organization_name if matched_card.source else "Cơ quan thẩm quyền sở tại"
-    doc_url = matched_card.source.document_url if matched_card.source else "#"
+    # 4. Chuẩn bị Evidence Card tương thích để gửi cho LLM và UI
+    is_external = best_match["source_kind"] == "EXTERNAL"
+    org_name = (
+        "JNTO (Cơ quan Xúc tiến Du lịch Nhật Bản)" if norm_country == "JP"
+        else ("Cultural Atlas (Mosaica)" if is_external else "Cộng đồng Người Việt tại " + country_name)
+    )
+    doc_url = best_match.get("source_url") or "#"
+    card_id = f"RAG-{best_match['chunk_id'][:12]}" if is_external else f"COM-{best_match['source_ref']}"
 
     card_dict = {
-        "card_id": matched_card.card_id,
-        "source_id": matched_card.source_id,
-        "country_code": matched_card.country_code,
-        "country_name": COUNTRY_MAP.get(matched_card.country_code, matched_card.country_code),
-        "domain_id": matched_card.domain_id,
-        "domain_name": DOMAIN_MAP.get(matched_card.domain_id, matched_card.domain_id),
-        "title": matched_card.title,
-        "context": matched_card.context,
-        "verified_content": matched_card.verified_content,
-        "safe_action": matched_card.safe_action,
-        "donots": matched_card.donots,
-        "reliability_score": matched_card.reliability_score,
-        "confidence_level": matched_card.confidence_level,
-        "status": matched_card.status or "APPROVED",
+        "card_id": card_id,
+        "source_id": best_match["source_ref"],
+        "country_code": norm_country,
+        "country_name": country_name,
+        "domain_id": "giao_tiep",
+        "domain_name": "Giao tiếp – Văn hoá ứng xử",
+        "title": best_match["title"],
+        "context": f"Quy chuẩn ứng xử và phép lịch sự tại {country_name}",
+        "verified_content": best_match["content"],
+        "safe_action": "",
+        "donots": "",
+        "reliability_score": int(round(similarity_score * 100)),
+        "confidence_level": "Rất cao (Nguồn chính thống)" if is_external else "Đã xác minh (Cộng đồng)",
+        "status": "APPROVED",
         "organization_name": org_name,
         "source_url": doc_url,
-        "verified_date": matched_card.verified_date
+        "verified_date": None,
+        "source": KnowledgeSourceResponse(
+            source_id=best_match["source_ref"],
+            country_code=norm_country,
+            organization_name=org_name,
+            source_type="EXTERNAL_OFFICIAL" if is_external else "COMMUNITY_APPROVED",
+            document_title=best_match["title"],
+            document_url=best_match.get("source_url"),
+            reliability_score=int(round(similarity_score * 100))
+        )
     }
 
     # 5. Sinh câu trả lời có cấu trúc thông qua LLM (Grounded Output)
-    llm_output = await generate_structured_response(clean_query, card_dict, country)
+    llm_output = await generate_structured_response(
+        query=clean_query,
+        evidence_card=card_dict,
+        country=norm_country,
+        matches=matches
+    )
+
+    card_dict["safe_action"] = llm_output["safe_action"]
+    card_dict["donots"] = llm_output["donots"]
 
     return {
         "success": True,
@@ -257,7 +362,28 @@ async def execute_rag_pipeline(
         "context_analysis": llm_output["context_analysis"],
         "safe_action": llm_output["safe_action"],
         "donots": llm_output["donots"],
-        "matched_card": card_dict,
-        "confidence": matched_card.reliability_score,
-        "confidence_level": matched_card.confidence_level
+        "matched_card": EvidenceCardResponse(**card_dict),
+        "matched_chunk": {
+            "chunk_id": best_match["chunk_id"],
+            "document_id": best_match["document_id"],
+            "source_kind": best_match["source_kind"],
+            "source_ref": best_match["source_ref"],
+            "title": best_match["title"],
+            "source_url": best_match["source_url"],
+            "similarity": round(best_match["similarity"], 4)
+        },
+        "sources": [
+            {
+                "chunk_id": m["chunk_id"],
+                "document_id": m["document_id"],
+                "source_kind": m["source_kind"],
+                "source_ref": m["source_ref"],
+                "title": m["title"],
+                "source_url": m["source_url"],
+                "similarity": round(m["similarity"], 4)
+            }
+            for m in matches
+        ],
+        "confidence": card_dict["reliability_score"],
+        "confidence_level": card_dict["confidence_level"]
     }

@@ -39,7 +39,10 @@ class ChatService:
         if rag_result.get("direct_message"):
             bot_content = rag_result["direct_message"]
         elif rag_result.get("success") and rag_result.get("matched_card"):
-            matched_id = rag_result["matched_card"]["card_id"]
+            card = rag_result["matched_card"]
+            matched_id = getattr(card, "card_id", None) if not isinstance(card, dict) else card.get("card_id")
+            if matched_id and len(matched_id) > 50:
+                matched_id = matched_id[:50]
             bot_content = f"【Hành vi an toàn】: {rag_result.get('safe_action')}\n【Điều cần tránh】: {rag_result.get('donots')}"
         else:
             bot_content = rag_result.get("refusal_message", "Hệ thống từ chối đưa ra kết luận.")

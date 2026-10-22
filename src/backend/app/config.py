@@ -12,9 +12,10 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str = "postgresql+psycopg2://postgres:postgrespassword@localhost:5432/aisc_db"
+    TRANSFORMED_DATABASE_URL: str = "postgresql+psycopg2://aisc_data:aisc_data_local_2026@localhost:5433/aisc_data"
     
-    @field_validator("DATABASE_URL", mode="before")
-    def format_database_url(cls, v):
+    @field_validator("DATABASE_URL", "TRANSFORMED_DATABASE_URL", mode="before")
+    def format_database_urls(cls, v):
         if isinstance(v, str) and v.startswith("postgresql://"):
             return v.replace("postgresql://", "postgresql+psycopg2://", 1)
         return v
@@ -33,8 +34,9 @@ class Settings(BaseSettings):
     
     # AI / LLM Configuration
     GEMINI_API_KEY: str = ""
-    EMBEDDING_MODEL: str = "bge-m3"
-    CONFIDENCE_THRESHOLD: float = 0.70
+    EMBEDDING_MODEL: str = "multilingual-e5-small"
+    EMBEDDING_SERVICE_URL: str = "http://localhost:8001"
+    CONFIDENCE_THRESHOLD: float = 0.80
     
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
