@@ -81,7 +81,7 @@ async function sendUserMessage() {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 35000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     const res = await fetch(`${API_BASE}/chat/message`, {
       method: 'POST',
