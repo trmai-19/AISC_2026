@@ -37,50 +37,53 @@ function setDomainFilter(domainId) {
   filterEvidenceCards();
 }
 
-let currentLoadedCards = APP_DATA.evidenceCards;
+let currentLoadedCards = [];
 
 async function filterEvidenceCards() {
   const searchInput = document.getElementById('explorerSearchInput');
   const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
-  // 1. Nếu Backend online, tra cứu qua REST API
-  if (isBackendConnected) {
-    try {
-      const params = new URLSearchParams();
-      if (currentCountryFilter !== 'ALL') params.append('country', currentCountryFilter);
-      if (currentDomainFilter !== 'ALL') params.append('domain', currentDomainFilter);
-      if (query) params.append('q', query);
+  // 1. Luôn ưu tiên tra cứu trực tiếp qua live REST API
+  try {
+    const params = new URLSearchParams();
+    if (currentCountryFilter !== 'ALL') params.append('country', currentCountryFilter);
+    if (currentDomainFilter !== 'ALL') params.append('domain', currentDomainFilter);
+    if (query) params.append('q', query);
 
-      const res = await fetch(`${API_BASE}/evidence?${params.toString()}`);
-      if (res.ok) {
-        const cards = await res.json();
-        currentLoadedCards = cards.map(c => ({
-          id: c.card_id,
-          country: c.country_code,
-          countryName: c.country_name,
-          domainId: c.domain_id,
-          domainName: c.domain_name,
-          title: c.title,
-          context: c.context,
-          verifiedContent: c.verified_content,
-          safeAction: c.safe_action,
-          donots: c.donots,
-          organization: c.organization_name || (c.source ? c.source.organization_name : 'Cơ quan thẩm quyền & Cộng đồng'),
-          sourceType: c.source ? c.source.source_type : 'Kinh nghiệm đối soát cộng đồng',
-          sourceUrl: c.source_url || (c.source ? c.source.document_url : '#'),
-          reliabilityScore: c.reliability_score,
-          verifiedDate: c.verified_date
-        }));
-        renderEvidenceCards(currentLoadedCards);
-        return;
-      }
-    } catch (err) {
-      console.warn('Evidence Hub API filter error, falling back to local data:', err);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(`${API_BASE}/evidence?${params.toString()}`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const cards = await res.json();
+      currentLoadedCards = cards.map(c => ({
+        id: c.card_id,
+        country: c.country_code,
+        countryName: c.country_name,
+        domainId: c.domain_id,
+        domainName: c.domain_name,
+        title: c.title,
+        context: c.context,
+        verifiedContent: c.verified_content,
+        safeAction: c.safe_action || '',
+        donots: c.donots || '',
+        organization: c.organization_name || (c.source ? c.source.organization_name : 'Cơ quan thẩm quyền'),
+        sourceType: c.source ? c.source.source_type : 'Tài liệu đối soát',
+        sourceUrl: c.source_url || (c.source ? c.source.document_url : null),
+        reliabilityScore: c.reliability_score,
+        confidenceLevel: c.confidence_level,
+        verifiedDate: c.verified_date
+      }));
+      renderEvidenceCards(currentLoadedCards);
+      return;
     }
+  } catch (err) {
+    console.warn('Evidence Hub API live fetch failed, fallback to local data:', err);
   }
 
-  // 2. Chế độ dự phòng cục bộ
-  currentLoadedCards = APP_DATA.evidenceCards.filter(card => {
+  // 2. Chế độ dự phòng cục bộ khi backend offline
+  currentLoadedCards = (APP_DATA.evidenceCards || []).filter(card => {
     const matchCountry = currentCountryFilter === 'ALL' || card.country === currentCountryFilter;
     const matchDomain = currentDomainFilter === 'ALL' || card.domainId === currentDomainFilter;
     const matchQuery = !query || 
@@ -94,6 +97,7 @@ async function filterEvidenceCards() {
 
   renderEvidenceCards(currentLoadedCards);
 }
+
 
 function renderEvidenceCards(cards = currentLoadedCards) {
   const container = document.getElementById('evidenceCardsGrid');

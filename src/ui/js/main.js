@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. Khởi tạo các thành phần giao diện
   if (typeof initDomainFilters === 'function') initDomainFilters();
   if (typeof initSamplePrompts === 'function') initSamplePrompts();
-  if (typeof renderEvidenceCards === 'function') renderEvidenceCards();
+  if (typeof filterEvidenceCards === 'function') filterEvidenceCards();
   if (typeof initSurveyDomainSelect === 'function') initSurveyDomainSelect();
   if (typeof renderAdminQueue === 'function') renderAdminQueue();
   if (typeof updateUserContext === 'function') updateUserContext();
@@ -56,6 +56,11 @@ function switchView(viewId) {
   // Khởi tạo Dashboard nếu chuyển đến tab thống kê
   if (viewId === 'dashboard' && typeof initDashboard === 'function') {
     initDashboard();
+  }
+
+  // Tải dữ liệu thật từ API nếu chuyển đến tab Kho Bằng Chứng
+  if (viewId === 'explorer' && typeof filterEvidenceCards === 'function') {
+    filterEvidenceCards();
   }
 
   // Kiểm tra quyền truy cập (Role Guard)
