@@ -47,10 +47,14 @@ async function checkBackendHealth() {
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      if (data.status === 'ok') {
+      if (data.status === 'ok' || data.status === 'healthy') {
+        const wasOffline = !isBackendConnected;
         isBackendConnected = true;
         if (pill) pill.classList.add('online');
         if (text) text.textContent = 'API: Online (pgvector)';
+        if (wasOffline && typeof filterEvidenceCards === 'function') {
+          filterEvidenceCards();
+        }
         return true;
       }
     }
@@ -660,6 +664,8 @@ function setDomainFilter(domainId) {
   filterEvidenceCards();
 }
 
+let currentLoadedCards = APP_DATA.evidenceCards;
+
 async function filterEvidenceCards() {
   const searchInput = document.getElementById('explorerSearchInput');
   const query = (searchInput ? searchInput.value : '').toLowerCase().trim();
@@ -675,7 +681,7 @@ async function filterEvidenceCards() {
       const res = await fetch(`${API_BASE}/evidence?${params.toString()}`);
       if (res.ok) {
         const cards = await res.json();
-        const mapped = cards.map(c => ({
+        currentLoadedCards = cards.map(c => ({
           id: c.card_id,
           country: c.country_code,
           countryName: c.country_name,
@@ -686,13 +692,13 @@ async function filterEvidenceCards() {
           verifiedContent: c.verified_content,
           safeAction: c.safe_action,
           donots: c.donots,
-          organization: c.organization,
-          sourceType: c.source_type,
-          sourceUrl: c.source_url || '#',
+          organization: c.organization_name || (c.source ? c.source.organization_name : 'Cơ quan thẩm quyền & Cộng đồng'),
+          sourceType: c.source ? c.source.source_type : 'Kinh nghiệm đối soát cộng đồng',
+          sourceUrl: c.source_url || (c.source ? c.source.document_url : '#'),
           reliabilityScore: c.reliability_score,
           verifiedDate: c.verified_date
         }));
-        renderEvidenceCards(mapped);
+        renderEvidenceCards(currentLoadedCards);
         return;
       }
     } catch (err) {
@@ -701,12 +707,9 @@ async function filterEvidenceCards() {
   }
 
   // 2. Chế độ dự phòng cục bộ
-  const filtered = APP_DATA.evidenceCards.filter(card => {
-    // Country filter
+  currentLoadedCards = APP_DATA.evidenceCards.filter(card => {
     const matchCountry = currentCountryFilter === 'ALL' || card.country === currentCountryFilter;
-    // Domain filter
     const matchDomain = currentDomainFilter === 'ALL' || card.domainId === currentDomainFilter;
-    // Search query
     const matchQuery = !query || 
       card.title.toLowerCase().includes(query) ||
       card.context.toLowerCase().includes(query) ||
@@ -716,14 +719,14 @@ async function filterEvidenceCards() {
     return matchCountry && matchDomain && matchQuery;
   });
 
-  renderEvidenceCards(filtered);
+  renderEvidenceCards(currentLoadedCards);
 }
 
-function renderEvidenceCards(cards = APP_DATA.evidenceCards) {
+function renderEvidenceCards(cards = currentLoadedCards) {
   const container = document.getElementById('evidenceCardsGrid');
   if (!container) return;
 
-  if (cards.length === 0) {
+  if (!cards || cards.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle);">
         <p style="color: var(--text-muted); font-size: 0.95rem;">Không tìm thấy thông tin phù hợp với bộ lọc hiện tại.</p>
@@ -778,11 +781,11 @@ function resetExplorerFilters() {
   if (searchInput) searchInput.value = '';
   document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.toggle('active', btn.dataset.country === 'ALL'));
   document.querySelectorAll('.domain-chip').forEach(btn => btn.classList.toggle('active', btn.dataset.domain === 'ALL'));
-  renderEvidenceCards();
+  filterEvidenceCards();
 }
 
 function openEvidenceDetailModal(cardId) {
-  const card = APP_DATA.evidenceCards.find(c => c.id === cardId);
+  const card = currentLoadedCards.find(c => c.id === cardId) || APP_DATA.evidenceCards.find(c => c.id === cardId);
   if (!card) return;
 
   const modal = document.getElementById('evidenceDetailModal');
@@ -823,9 +826,15 @@ function openEvidenceDetailModal(cardId) {
         <div style="color: var(--text-primary); font-weight: 700;">Nguồn: ${escapeHtml(card.organization)}</div>
         <div style="color: var(--text-muted);">Phân loại: ${escapeHtml(card.sourceType)} • Ngày xác minh: ${card.verifiedDate}</div>
       </div>
-      <a href="${card.sourceUrl}" target="_blank" rel="noopener" class="btn-card-action" style="text-decoration: none;">
-        Xem tài liệu gốc ↗
-      </a>
+      ${card.sourceUrl ? `
+        <a href="${card.sourceUrl}" target="_blank" rel="noopener" class="btn-card-action" style="text-decoration: none;">
+          Xem tài liệu gốc ↗
+        </a>
+      ` : `
+        <span style="font-size: 0.75rem; color: var(--accent-primary); background: var(--bg-surface); padding: 0.35rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-weight: 600;">
+          ✓ Kinh nghiệm cộng đồng đối soát
+        </span>
+      `}
     </div>
   `;
 

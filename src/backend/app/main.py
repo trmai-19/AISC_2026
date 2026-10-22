@@ -62,4 +62,4 @@ def root_endpoint():
 
 @app.get("/health", tags=["Health Check"])
 def health_check():
-    return {"status": "healthy"}
+    return {"status": "ok", "mode": "healthy"}

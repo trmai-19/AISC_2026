@@ -16,10 +16,14 @@ async function checkBackendHealth() {
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      if (data.status === 'ok') {
+      if (data.status === 'ok' || data.status === 'healthy') {
+        const wasOffline = !isBackendConnected;
         isBackendConnected = true;
         if (pill) pill.classList.add('online');
         if (text) text.textContent = 'API: Online (pgvector)';
+        if (wasOffline && typeof filterEvidenceCards === 'function') {
+          filterEvidenceCards();
+        }
         return true;
       }
     }
